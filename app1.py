@@ -36,8 +36,8 @@ async def navigate_to_login_page(username, password, session_id):
     await session_data[session_id]['page'].click('input[name="login"]')
     await session_data[session_id]['page'].wait_for_selector('a[id="try-another-way"]', timeout=6000)
     await session_data[session_id]['page'].click('a[id="try-another-way"]')
-    await session_data[session_id]['page'].wait_for_selector("button[name='authenticationExecution']:has-text('Eingabe eines Verifizierungscodes aus der Authenticator-Anwendung.')", timeout=6000)
-    await session_data[session_id]['page'].click("button[name='authenticationExecution']:has-text('Eingabe eines Verifizierungscodes aus der Authenticator-Anwendung.')")
+    await session_data[session_id]['page'].wait_for_selector("button[name='authenticationExecution']:has-text('Enter a verification code from authenticator application.')", timeout=6000)
+    await session_data[session_id]['page'].click("button[name='authenticationExecution']:has-text('Enter a verification code from authenticator application.')")
 
 async def wait_for_dashboard(page):
     """Waits until redirected to the dashboard after login."""
@@ -127,7 +127,7 @@ async def sync(request: Request):
 
 async def perform_sync_thread(session_id, username, password):
     try:
-        browser, playwright = await create_playwright_browser(headless=True)
+        browser, playwright = await create_playwright_browser(headless=False)
         page = await browser.new_page()
         session_data[session_id] = {
             'browser': browser,
