@@ -1,143 +1,170 @@
-<!-- login.html -->
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login to Sync</title>
-    <link rel="apple-touch-icon" sizes="180x180" href="/favicon_io/apple-touch-icon.png">
-    <link rel="icon" type="image/png" sizes="32x32" href="/favicon_io/favicon-32x32.png">
-    <link rel="icon" type="image/png" sizes="16x16" href="/favicon_io/favicon-16x16.png">
-    <link rel="manifest" href="/favicon_io/site.webmanifest">
-</head>
+    <title>Login Example</title>
+    <style>
+        /* Simple CSS for the modal popup */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+        }
 
+        .modal-content {
+            background-color: white;
+            margin: 15% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 50%;
+        }
+
+        .close {
+            float: right;
+            font-size: 28px;
+            cursor: pointer;
+        }
+
+        form {
+            max-width: 300px;
+            margin: 0 auto;
+        }
+
+        input[type="text"], input[type="password"] {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            box-sizing: border-box;
+        }
+
+        input[type="submit"] {
+            padding: 10px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+    </style>
+    <!-- jQuery CDN -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
 <body>
-    <h1>Login to Your Account</h1>
-    <form id="login-form" action="/perform-sync" method="get">
-        <label for="username">Username:</label>
-        <input type="text" name="username" id="username" required>
-        <br><br>
-        <label for="password">Password:</label>
-        <input type="password" name="password" id="password" required>
-        <br><br>
-        <button id="login-submit" type="submit">Login</button>
+    <h1>Login Example</h1>
+
+    <!-- Login Form -->
+    <form id="loginForm">
+        <label for="username">Username:</label><br>
+        <input type="text" id="username" name="username" required><br>
+
+        <label for="password">Password:</label><br>
+        <input type="password" id="password" name="password" required><br>
+
+        <input type="submit" value="Login">
     </form>
 
-    <div id="otp-section" style="display:none;">
-        <h2>Enter OTP</h2>
-        <form id="otp-form">
-            <label for="otp">OTP:</label>
-            <input type="text" id="otp" name="otp" required>
-            <input type="hidden" id="session-id" name="session_id">
-            <button type="submit">Submit OTP</button>
-        </form>
-    </div>
+    <!-- OTP Form (hidden by default) -->
+    <form id="otpForm" style="display: none; margin-top: 20px;">
+        <label for="otp">Enter OTP:</label><br>
+        <input type="text" id="otp" name="otp" required><br>
+        <input type="submit" value="Submit OTP">
+    </form>
 
-    <div id="loading" style="display:none;">
-        <p>Please wait while we log you in...</p>
-    </div>
-
-    <div id="results-section" style="display:none;">
-        <h2>Scraped Data</h2>
-        <div id="results-content"></div>
-    </div>
-
-    <div id="browser-window">
-        <h2>Your Session</h2>
-        <img id="screenshot" src="" width="100%" height="600px" style="border: none;" alt="Screenshot from Playwright">
+    <!-- The Modal for showing the response -->
+    <div id="scrapeModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Response:</h2>
+            <div id="scrapedData"></div>
+        </div>
     </div>
 
     <script>
-        document.getElementById('login-form').addEventListener('submit', function (event) {
-            event.preventDefault();
-            const formData = new FormData(event.target);
+        $(document).ready(function() {
+            const $loginForm = $('#loginForm');
+            const $otpForm = $('#otpForm');
+            const $modal = $('#scrapeModal');
+            const $scrapedDataDiv = $('#scrapedData');
+            let sessionId;  // Store session ID for OTP submission
 
-            // Show the loading message
-            document.getElementById('loading').style.display = 'block';
-            document.getElementById('login-submit').disabled = true;
-            const formDataObject = {};
-            formData.forEach((value, key) => formDataObject[key] = value);
-            
-            fetch('/perform-sync', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(formDataObject),  // Send form data as JSON
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.status == "authentication_failed") {
-                    alert(data.message);
-                    location.reload();
-                }
-                if (data.status === 'otp_check_started') {
-                    // Hide loading and login form, show OTP section
-                    document.getElementById('login-form').style.display = 'none';
-                    document.getElementById('otp-section').style.display = 'block';
-            
-                    // Set the session ID
-                    document.getElementById('session-id').value = data.session_id;
-            
-                    startScreenshotUpdate(data.session_id);  // Start updating screenshots
-                }
-            });
-        });
+            // When the user submits the login form
+            $loginForm.on('submit', function(event) {
+                event.preventDefault();  // Prevent default form submission
 
-        document.getElementById('otp-form').addEventListener('submit', function (event) {
-            event.preventDefault();
-            const formData = new FormData(event.target);
+                const loginData = {
+                    username: $('#username').val(),
+                    password: $('#password').val()
+                };
 
-            fetch(`/submit-otp?session_id=${formData.get("session_id")}&otp=${formData.get("otp")}`).then(response => response.json()).then(data => {
-                if (data.status === 'success') {
-                    // Hide OTP section, show loading message again
-                    document.getElementById('otp-section').style.display = 'none';
-                    document.getElementById('loading').style.display = 'none';
-
-                    // Clear previous results
-                    const resultsContent = document.getElementById('results-content');
-                    resultsContent.innerHTML = '';
-
-                    // Loop through the courses and display emails
-                    data.data.forEach(course => {
-                        const courseDiv = document.createElement('div');
-                        courseDiv.classList.add('course');
-                        courseDiv.innerHTML = `<h2>${course.course_name}</h2><div class="students"><ul></ul></div>`;
-
-                        // Add emails to the course div
-                        const emailList = courseDiv.querySelector('ul');
-                        course.students.forEach(email => {
-                            const emailItem = document.createElement('li');
-                            emailItem.innerText = email;
-                            emailList.appendChild(emailItem);
-                        });
-
-                        // Append the course div to results content
-                        resultsContent.appendChild(courseDiv);
-                    });
-                }
-            });
-        });
-        function startScreenshotUpdate(sessionId) {
-            setInterval(() => {
-                fetch(`/screenshot?session_id=${sessionId}`)  // Use query parameters for the session ID
-                    .then(response => {
-                        if (!response.ok) {
-                            throw new Error('Network response was not ok');
+                // Make AJAX request to login endpoint using JSON
+                $.ajax({
+                    //url: 'http://localhost:8000/login',
+                    url: 'http://unifyhn.de/login',
+                    type: 'POST',
+                    data: JSON.stringify(loginData),
+                    contentType: 'application/json',
+                    success: function(data) {
+                        if (data.status === 'otp_required') {
+                            sessionId = data.session_id;  // Save session ID
+                            // Show the OTP form if OTP is required
+                            $loginForm.hide();
+                            $otpForm.show();
+                        } else {
+                            alert('Login failed');
                         }
-                        return response.json();  // Parse the response as JSON
-                    })
-                    .then(data => {
-                        const imageUrl = data.screenshot;  // Get the base64 image data from the response
-                        document.getElementById('screenshot').src = imageUrl;  // Update the image element
-                    })
-                    .catch(error => {
-                        console.error('Error fetching screenshot:', error);  // Log any errors
-                    });
-            }, 1000);  // Update every second
-        }
+                    },
+                    error: function(err) {
+                        console.error('Error during login:', err);
+                        alert('Error during login');
+                    }
+                });
+            });
+
+            // When the user submits the OTP form
+            $otpForm.on('submit', function(event) {
+                event.preventDefault();  // Prevent default form submission
+
+                const otpData = {
+                    otp: $('#otp').val(),
+                    session_id: sessionId  // Send session ID with OTP
+                };
+
+                // Make AJAX request to submit OTP endpoint using JSON
+                $.ajax({
+                    //url: 'http://localhost:8000/submit-otp',
+                    url: 'http://unifyhn.de/submit-otp',
+                    type: 'POST',
+                    data: JSON.stringify(otpData),
+                    contentType: 'application/json',
+                    success: function(data) {
+                        // Show the response data in the modal popup
+                        $scrapedDataDiv.html(`<p>${data.page_title}</p>`);
+                        $modal.show(); // Show the modal
+                    },
+                    error: function(err) {
+                        console.error('Error during OTP submission:', err);
+                        alert('Error during OTP submission');
+                    }
+                });
+            });
+
+            // Close the modal when the user clicks the close button
+            $('.close').on('click', function() {
+                $modal.hide();
+            });
+
+            // Close the modal if the user clicks anywhere outside of the modal
+            $(window).on('click', function(event) {
+                if ($(event.target).is($modal)) {
+                    $modal.hide();
+                }
+            });
+        });
     </script>
 </body>
-
 </html>
