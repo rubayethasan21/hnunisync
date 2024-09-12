@@ -112,6 +112,7 @@
                         if (data.status === 'otp_required') {
                             sessionId = data.session_id;  // Save session ID
                             // Show the OTP form if OTP is required
+                            console.log(sessionId)
                             $loginForm.hide();
                             $otpForm.show();
                         } else {
