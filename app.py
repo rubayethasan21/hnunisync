@@ -59,7 +59,7 @@ async def login(login_data: LoginData):
         page = await browser.new_page()
 
         # Store the browser, page, and playwright instance in session data
-        session_data[session_id] = {"browser": browser, "page": page, "playwright": p}
+        #session_data[session_id] = {"browser": browser, "page": page, "playwright": p}
 
         # Go to the login page
         await page.goto(login_url)
@@ -79,6 +79,7 @@ async def login(login_data: LoginData):
 
         html_content = await page.content()
         print('html_content1', html_content)
+        session_data[session_id] = {"browser": browser, "page": page, "playwright": p}
 
         # Return a response to the frontend indicating OTP is needed and send session_id
         return JSONResponse({"status": "otp_required", "session_id": session_id})
