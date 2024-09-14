@@ -41,6 +41,21 @@
         </form>
     </div>
 
+    <!-- Modal for showing the response -->
+    <div id="scrapeModal" class="modal fade">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Response</h5>
+                    <button type="button" class="close" data-dismiss="modal">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div id="scrapedData"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- User List -->
     <div id="user-list" class="mt-4" style="display: none;"></div>
 </div>
@@ -51,27 +66,26 @@
 
 <script>
     $(document).ready(function () {
-        // Store jQuery selectors in reusable variables
         const $loginForm = $('#loginForm');
         const $otpForm = $('#otpForm');
+        const $modal = $('#scrapeModal');
+        const $scrapedDataDiv = $('#scrapedData');
         const $userListDiv = $('#user-list');
         const $loginViewDiv = $('#login-view');
         const $otpViewDiv = $('#otp-view');
 
         let sessionId;  // Store session ID for OTP submission
 
-        /**
-         * Handles the login form submission.
-         */
-        function handleLogin(event) {
-            event.preventDefault();
+        // When the user submits the login form
+        $loginForm.on('submit', function (event) {
+            event.preventDefault();  // Prevent default form submission
 
             const loginData = {
                 username: $('#username').val(),
                 password: $('#password').val()
             };
 
-            // Make AJAX request to login endpoint
+            // Make AJAX request to login endpoint using JSON
             $.ajax({
                 url: '/login',
                 type: 'POST',
@@ -80,7 +94,8 @@
                 success: function (data) {
                     if (data.status === 'otp_required') {
                         sessionId = data.session_id;  // Save session ID
-                        toggleViews($loginViewDiv, $otpViewDiv);  // Hide login view, show OTP view
+                        $loginViewDiv.hide();
+                        $otpViewDiv.show();
                     } else {
                         alert('Login failed');
                     }
@@ -90,82 +105,72 @@
                     alert('Error during login');
                 }
             });
-        }
+        });
 
-        /**
-         * Handles the OTP form submission.
-         */
-        function handleOTPSubmit(event) {
-            event.preventDefault();
+        // When the user submits the OTP form
+        $otpForm.on('submit', function (event) {
+            event.preventDefault();  // Prevent default form submission
 
-            const otpData = {
+            let otpData = {
                 otp: $('#otp').val(),
                 session_id: sessionId  // Send session ID with OTP
             };
 
-            // Make AJAX request to submit OTP
+            // Make AJAX request to submit OTP endpoint using JSON
             $.ajax({
                 url: '/submit-otp',
                 type: 'POST',
                 data: JSON.stringify(otpData),
                 contentType: 'application/json',
                 success: function (data) {
-                    renderUserList(data.all_email_column_data);
-                    toggleViews($otpViewDiv, $userListDiv);  // Hide OTP view, show user list
+                    $scrapedDataDiv.html(`<p>${data.page_title}</p>`);
+                    $otpViewDiv.hide();
+
+                    // Show the data in the hidden user-list div
+                    if (data.all_email_column_data) {
+                        let htmlContent = '<h3>Folgende Matrixräume werden synchronisiert</h3>';
+
+                        data.all_email_column_data.forEach(course => {
+                            htmlContent += `
+                            <div class="card mt-3">
+                                <div class="card-header">
+                                    <strong>Matrix Room: ${course.course_name}</strong> (ID: ${course.course_id})
+                                </div>
+                                <div class="card-body">
+                                    <p><strong>Benutzer:</strong></p>
+                                    <ul class="list-group">
+                                    `;
+
+                                    course.students.forEach(student => {
+                                        htmlContent += `<li class="list-group-item">${student}</li>`;
+                                    });
+
+                                    htmlContent += `
+                                    </ul>
+                                </div>
+                            </div>
+                            `;
+                        });
+
+                        $userListDiv.html(htmlContent);
+                        $userListDiv.show();  // Unhide the div
+                    }
+
+
+                    // Show the modal using Bootstrap's modal functionality
+                    //$modal.modal('show');
                 },
                 error: function (err) {
                     console.error('Error during OTP submission:', err);
+                    alert('Error during OTP submission');
                 }
             });
-        }
+        });
 
-        /**
-         * Renders the list of users and courses.
-         * @param {Array} courses - The array of courses and their users.
-         */
-        function renderUserList(courses) {
-            if (!courses) return;
-
-            let htmlContent = '<h3>Folgende Matrixräume werden synchronisiert</h3>';
-
-            courses.forEach(course => {
-                htmlContent += `
-                    <div class="card mt-3">
-                        <div class="card-header">
-                            <strong>Matrix Room: ${course.course_name}</strong>
-                        </div>
-                        <div class="card-body">
-                            <p><strong>Benutzer:</strong></p>
-                            <ul class="list-group">
-                `;
-
-                course.students.forEach(student => {
-                    htmlContent += `<li class="list-group-item">${student}</li>`;
-                });
-
-                htmlContent += `
-                            </ul>
-                        </div>
-                    </div>
-                `;
-            });
-
-            $userListDiv.html(htmlContent);
-        }
-
-        /**
-         * Toggles visibility between two views.
-         * @param {jQuery} hideElement - The element to hide.
-         * @param {jQuery} showElement - The element to show.
-         */
-        function toggleViews(hideElement, showElement) {
-            hideElement.hide();
-            showElement.show();
-        }
-
-        // Attach form submit handlers
-        $loginForm.on('submit', handleLogin);
-        $otpForm.on('submit', handleOTPSubmit);
+        // Close the modal when the user clicks the close button
+        $('.close').on('click', function () {
+            $modal.modal('hide');
+        });
     });
 </script>
 </body>
