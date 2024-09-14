@@ -84,18 +84,12 @@
         </div>
     </div>
 
-    <div id="user-list" style="display: none;"></div>
-
-
-
     <script>
         $(document).ready(function() {
             const $loginForm = $('#loginForm');
             const $otpForm = $('#otpForm');
             const $modal = $('#scrapeModal');
             const $scrapedDataDiv = $('#scrapedData');
-            const $userListDiv = $('#user-list');
-
             let sessionId;  // Store session ID for OTP submission
 
             // When the user submits the login form
@@ -158,14 +152,6 @@
                         // Show the response data in the modal popup
                         $scrapedDataDiv.html(`<p>${data.page_title}</p>`);
                         console.log('all_email_column_data',data.all_email_column_data)
-                        $otpForm.hide();
-
-                        // Show the data in the hidden user-list div
-                        if (data.all_email_column_data) {
-                            $userListDiv.html(JSON.stringify(data.all_email_column_data));
-                            $userListDiv.show();  // Unhide the div
-                        }
-
                         $modal.show(); // Show the modal
                     },
                     error: function(err) {
