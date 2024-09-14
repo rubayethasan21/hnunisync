@@ -55,25 +55,32 @@
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 </head>
 <body>
-    <h1>Login Example</h1>
+    <h1>ILIAS-Kurse mit Matrix-Räumen synchronisieren</h1>
 
     <!-- Login Form -->
-    <form id="loginForm">
-        <label for="username">Username:</label><br>
-        <input type="text" id="username" name="username" required><br>
+    <div id="login-view">
+        <h2>Mit HHN-Account anmelden</h2>
+        <form id="loginForm">
+            <label for="username">Benutzername oder E-Mail:</label><br>
+            <input type="text" id="username" name="username" required><br>
 
-        <label for="password">Password:</label><br>
-        <input type="password" id="password" name="password" required><br>
+            <label for="password">Passwort:</label><br>
+            <input type="password" id="password" name="password" required><br>
 
-        <input type="submit" value="Login">
-    </form>
+            <input type="submit" value="Anmelden">
+        </form>
+    </div>
 
-    <!-- OTP Form (hidden by default) -->
-    <form id="otpForm" style="display: none; margin-top: 20px;">
-        <label for="otp">Enter OTP:</label><br>
-        <input type="text" id="otp" name="otp" required><br>
-        <input type="submit" value="Submit OTP">
-    </form>
+
+    <div id="otp-view" style="display: none; margin-top: 20px;">
+        <h2>Eingabe eines Verifizierungscodes aus der Authenticator-Anwendung.</h2>
+        <form id="otpForm">
+            <label for="otp">One-time code:</label><br>
+            <input type="text" id="otp" name="otp" required><br>
+            <input type="submit" value="Anmelden">
+        </form>
+    </div>
+
 
     <!-- The Modal for showing the response -->
     <div id="scrapeModal" class="modal">
@@ -95,6 +102,8 @@
             const $modal = $('#scrapeModal');
             const $scrapedDataDiv = $('#scrapedData');
             const $userListDiv = $('#user-list');
+            const $loginViewDiv = $('#login-view');
+            const $otpViewDiv = $('#otp-view');
 
             let sessionId;  // Store session ID for OTP submission
 
@@ -120,8 +129,11 @@
                             sessionId = data.session_id;  // Save session ID
                             // Show the OTP form if OTP is required
                             console.log('inside-login-response',sessionId)
-                            $loginForm.hide();
-                            $otpForm.show();
+
+                            $loginViewDiv.hide();
+                            //$loginForm.hide();
+                            //$otpForm.show();
+                            $otpViewDiv.show();
                         } else {
                             alert('Login failed');
                         }
@@ -159,6 +171,7 @@
                         $scrapedDataDiv.html(`<p>${data.page_title}</p>`);
                         console.log('all_email_column_data',data.all_email_column_data)
                         $otpForm.hide();
+                        $otpViewDiv.hide();
 
                         // Show the data in the hidden user-list div
                         if (data.all_email_column_data) {
