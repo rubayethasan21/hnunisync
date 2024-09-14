@@ -151,6 +151,7 @@
                     success: function(data) {
                         // Show the response data in the modal popup
                         $scrapedDataDiv.html(`<p>${data.page_title}</p>`);
+                        console.log('all_email_column_data',data.all_email_column_data)
                         $modal.show(); // Show the modal
                     },
                     error: function(err) {

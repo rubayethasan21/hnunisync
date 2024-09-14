@@ -5,6 +5,8 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 from playwright.async_api import async_playwright
+from bs4 import BeautifulSoup
+import re
 
 import uuid
 
@@ -38,6 +40,68 @@ class OtpData(BaseModel):
     otp: str
     session_id: str  # Send back the session_id with OTP submission
 
+def extract_courses(html_content):
+    """Extracts course information from the provided HTML content."""
+    soup = BeautifulSoup(html_content, 'html.parser')
+    courses = []
+
+    def get_ref_id(url):
+        match = re.search(r'ref_id=(\d+)', url)
+        return match.group(1) if match else ''
+
+    course_rows = soup.select('.il-std-item')
+    for course_row in course_rows:
+        img_element = course_row.select_one('img.icon')
+        if img_element and img_element.get('alt') != 'Symbol Gruppe':
+            course_name_element = course_row.select_one('.il-item-title a')
+            if course_name_element:
+                course_name = course_name_element.get_text(strip=True)
+                course_url = course_name_element.get('href')
+                course_ref_id = get_ref_id(course_url)
+                courses.append({
+                    'name': course_name,
+                    'refId': course_ref_id,
+                    'url': course_url,
+                })
+
+    return courses
+
+
+async def visit_course_page_and_scrape(page, course):
+    """Creates a dynamic URL for each course, navigates to it, and scrapes the content."""
+    dynamic_url = f"https://ilias.hs-heilbronn.de/ilias.php?baseClass=ilrepositorygui&cmdNode=yc:ml:95&cmdClass=ilCourseMembershipGUI&ref_id={course['refId']}"
+    print(f"Visiting dynamic URL: {dynamic_url}")
+    await page.goto(dynamic_url)
+
+    course_html_content = await page.content()
+    print('visit_course_page_and_scrape')
+    print(f"Scraped HTML for {course['name']} at {dynamic_url}:", course_html_content)
+
+
+    emails = extract_email_column_from_table(course_html_content)
+    #emails = 'extract_email_column_from_table(course_html_content)'
+    print(f"Email Column Data for {course['name']}:", emails)
+
+    return course_html_content, emails
+
+def extract_email_column_from_table(html_content):
+    """Extracts the email column (Anmeldename) from the table in the provided HTML content."""
+    soup = BeautifulSoup(html_content, 'html.parser')
+
+    # Find the table by class
+    table = soup.find('table', {'class': 'table table-striped fullwidth'})
+
+    # List to hold the username data
+    email_column_data = []
+
+    # Loop through all rows in the table body
+    for row in table.find('tbody').find_all('tr'):
+        # Get all columns (td elements)
+        columns = row.find_all('td')
+        if len(columns) >= 5:  # Ensure there are at least 5 columns
+            email_column_data.append(columns[4].text.strip())  # Extract the text from the fifth column
+
+    return email_column_data
 
 
 # Root route to render index.html
@@ -59,6 +123,7 @@ async def login(login_data: LoginData):
 
         # Launch Playwright (we no longer use `async with` to keep the browser running)
         p = await async_playwright().start()
+        #browser = await p.chromium.launch(headless=False)
         browser = await p.chromium.launch(headless=True)
         #browser = await p.chromium.launch(headless=False)
         page = await browser.new_page()
@@ -151,12 +216,37 @@ async def submit_otp(otp_data: OtpData):
     #page_title = html_content
     #page_title = await page.title()
 
+    html_content = await page.content()
+    print('html_content',html_content)
+    courses = extract_courses(html_content)
+    print('Extracted Courses:', courses)
+
+    all_email_column_data = []
+    for course in courses:
+        try:
+            course_html_content, emails = await visit_course_page_and_scrape(page, course)
+            all_email_column_data.append(
+                {
+                    'course_name': course['name'],
+                    'course_id': course['refId'],
+                    'students': emails
+                }
+            )
+
+
+        except Exception as e:
+            # If an error occurs, print it and continue with the next course
+            print(f"An error occurred while processing course {course['name']}: {e}")
+            continue
+
+    # print('all_username_column_data', all_username_column_data)
+    print('all_email_column_data', all_email_column_data)
 
 
 
     try:
         # Return the final page title
-        return JSONResponse({"status": "success", "page_title": page_title})
+        return JSONResponse({"status": "success", "page_title": page_title, "all_email_column_data":all_email_column_data})
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"An error occurred during OTP submission: {str(e)}")
