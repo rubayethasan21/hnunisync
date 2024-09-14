@@ -1,13 +1,11 @@
 from fastapi import FastAPI, Request, HTTPException
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import JSONResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 from playwright.async_api import async_playwright
-
 import uuid
-
 
 app = FastAPI()
 
@@ -38,20 +36,18 @@ class OtpData(BaseModel):
     otp: str
     session_id: str  # Send back the session_id with OTP submission
 
-
-
 # Root route to render index.html
 @app.get("/")
-async def index(request: Request):
-    print('index')
+async def root(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
 
-@app.post("/login", response_class=HTMLResponse)
+@app.post("/login")
 async def login(login_data: LoginData):
-    print('login')
     login_url = ('https://login.hs-heilbronn.de/realms/hhn/protocol/openid-connect/auth'
                  '?response_mode=form_post&response_type=id_token&redirect_uri=https%3A%2F%2Filias.hs-heilbronn.de%2Fopenidconnect.php'
                  '&client_id=hhn_common_ilias&nonce=badc63032679bb541ff44ea53eeccb4e&state=2182e131aa3ed4442387157cd1823be0&scope=openid+openid')
+
+    print('here0')
 
     try:
         # Create a unique session ID
@@ -60,12 +56,10 @@ async def login(login_data: LoginData):
         # Launch Playwright (we no longer use `async with` to keep the browser running)
         p = await async_playwright().start()
         browser = await p.chromium.launch(headless=True)
-        #browser = await p.chromium.launch(headless=False)
         page = await browser.new_page()
 
-
         # Store the browser, page, and playwright instance in session data
-        session_data[session_id] = {"browser": browser, "page": page, "playwright": p}
+        #session_data[session_id] = {"browser": browser, "page": page, "playwright": p}
 
         # Go to the login page
         await page.goto(login_url)
@@ -76,29 +70,17 @@ async def login(login_data: LoginData):
 
         # Submit the login form
         await page.click('input[name="login"]')
-        await page.wait_for_selector('a[id="try-another-way"]', timeout=6000)
+
         await page.click('a[id="try-another-way"]')
-        #await page.wait_for_selector(
-            #"button[name='authenticationExecution']:has-value('Eingabe eines Verifizierungscodes aus der Authenticator-Anwendung.')",
-            #timeout=6000)
-        await page.wait_for_selector(
-            "button[name='authenticationExecution'][value='f3ab6699-08c5-422b-a48b-befb53dd758a']",
-            timeout=6000
-        )
+
         # Click the two-factor authentication button (OTP form)
-        #await page.click(
-            #"button[name='authenticationExecution']:has-text('Eingabe eines Verifizierungscodes aus der Authenticator-Anwendung.')")
-
         await page.click(
-            "button[name='authenticationExecution'][value='f3ab6699-08c5-422b-a48b-befb53dd758a']"
-        )
+            "button[name='authenticationExecution']:has-text('Eingabe eines Verifizierungscodes aus der Authenticator-Anwendung.')")
 
-        await page.wait_for_selector('input[id="otp"]', timeout=6000)
+        html_content = await page.content()
+        print('html_content1', html_content)
+        session_data[session_id] = {"browser": browser, "page": page, "playwright": p}
 
-        #html_content = await page.content()
-        #print('html_content1', html_content)
-
-        #session_data[session_id] = {"browser": browser, "page": page, "playwright": p}
         # Return a response to the frontend indicating OTP is needed and send session_id
         return JSONResponse({"status": "otp_required", "session_id": session_id})
 
@@ -110,19 +92,13 @@ async def login(login_data: LoginData):
 @app.post("/submit-otp")
 async def submit_otp(otp_data: OtpData):
     session_id = otp_data.session_id
-    print('session_id', session_id)
-    print('session_data', session_data)
-
     if session_id not in session_data:
         raise HTTPException(status_code=404, detail="Session not found")
 
+    print('session_data', session_data)
     page = session_data[session_id]["page"]
     browser = session_data[session_id]["browser"]
 
-    print('page',page)
-    print('browser',browser)
-
-    #logging.debug(f"otp_data.otp: {otp_data.otp}")
     print('otp_data.otp', otp_data.otp)
     # Fill in the OTP from the JSON data
     await page.fill('input[id="otp"]', otp_data.otp)
@@ -132,27 +108,11 @@ async def submit_otp(otp_data: OtpData):
     await page.wait_for_url("**/ilias.php?baseClass=ilDashboardGUI&cmd=jumpToSelectedItems",
                             timeout=60000)  # Wait up to 60 seconds
 
-
-    course_list_url = 'https://ilias.hs-heilbronn.de/ilias.php?cmdClass=ilmembershipoverviewgui&cmdNode=jr&baseClass=ilmembershipoverviewgui'
-    #course_list_url = 'https://ilias.hs-heilbronn.de/ilias.php?baseClass=ilmembershipoverviewgui'
-
-    #await page.click("a[class='il-link link-bulky']:has-text('Meine Kurse und Gruppen')")
-
-    await page.goto(course_list_url)
-    await page.wait_for_url("**/ilias.php?cmdClass=ilmembershipoverviewgui&cmdNode=jr&baseClass=ilmembershipoverviewgui",
-                            timeout=60000)
-
-    #await page.goto(course_list_url)
-
     page_title = await page.title()
+
     print('page_title', page_title)
     html_content = await page.content()
     print('html_content4', html_content)
-    #page_title = html_content
-    page_title = await page.title()
-
-
-
 
     try:
         # Return the final page title
@@ -170,4 +130,4 @@ async def submit_otp(otp_data: OtpData):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000, log_level="debug")
+    uvicorn.run(app, host="0.0.0.0", port=8000)

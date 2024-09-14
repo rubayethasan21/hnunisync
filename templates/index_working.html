@@ -104,8 +104,7 @@
                 // Make AJAX request to login endpoint using JSON
                 $.ajax({
                     //url: 'http://localhost:8000/login',
-                    //url: 'http://hnunisync.de/login',
-                    url: '/login',
+                    url: 'http://hnunisync.de/login',
                     type: 'POST',
                     data: JSON.stringify(loginData),
                     contentType: 'application/json',
@@ -113,7 +112,7 @@
                         if (data.status === 'otp_required') {
                             sessionId = data.session_id;  // Save session ID
                             // Show the OTP form if OTP is required
-                            //console.log(sessionId)
+                            console.log(sessionId)
                             $loginForm.hide();
                             $otpForm.show();
                         } else {
@@ -126,8 +125,6 @@
                     }
                 });
             });
-
-            console.log(sessionId)
 
             // When the user submits the OTP form
             $otpForm.on('submit', function(event) {
@@ -143,8 +140,7 @@
                 // Make AJAX request to submit OTP endpoint using JSON
                 $.ajax({
                     //url: 'http://localhost:8000/submit-otp',
-                    //url: 'http://hnunisync.de/submit-otp',
-                    url: '/submit-otp',
+                    url: 'http://hnunisync.de/submit-otp',
                     type: 'POST',
                     data: JSON.stringify(otpData),
                     contentType: 'application/json',
