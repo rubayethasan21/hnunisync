@@ -146,10 +146,10 @@ async def submit_otp(otp_data: OtpData):
 
     page_title = await page.title()
     print('page_title', page_title)
-    html_content = await page.content()
-    print('html_content4', html_content)
+    #html_content = await page.content()
+    #print('html_content4', html_content)
     #page_title = html_content
-    page_title = await page.title()
+    #page_title = await page.title()
 
 
 

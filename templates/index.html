@@ -113,7 +113,7 @@
                         if (data.status === 'otp_required') {
                             sessionId = data.session_id;  // Save session ID
                             // Show the OTP form if OTP is required
-                            //console.log(sessionId)
+                            console.log('inside-login-response',sessionId)
                             $loginForm.hide();
                             $otpForm.show();
                         } else {
@@ -127,13 +127,13 @@
                 });
             });
 
-            console.log(sessionId)
+
 
             // When the user submits the OTP form
             $otpForm.on('submit', function(event) {
                 event.preventDefault();  // Prevent default form submission
 
-                const otpData = {
+                let otpData = {
                     otp: $('#otp').val(),
                     session_id: sessionId  // Send session ID with OTP
                 };
