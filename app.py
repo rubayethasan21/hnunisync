@@ -33,14 +33,14 @@ async def add_user_to_matrix_rooms(room_data: RoomData):
 
 
 #When FastAPI starts, we want to start the Matrix client and sync
-@app.on_event("startup")
-async def on_startup():
-    try:
-        await start_matrix_sync()  # Start Matrix sync loop
-        print("Matrix client started")
-    except Exception as e:
-        print(f"Error starting Matrix client: {e}")
-        raise HTTPException(status_code=500, detail="Failed to start Matrix client")
+# @app.on_event("startup")
+# async def on_startup():
+#     try:
+#         await start_matrix_sync()  # Start Matrix sync loop
+#         print("Matrix client started")
+#     except Exception as e:
+#         print(f"Error starting Matrix client: {e}")
+#         raise HTTPException(status_code=500, detail="Failed to start Matrix client")
 
 
 
