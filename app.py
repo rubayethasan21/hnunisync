@@ -7,11 +7,45 @@ from fastapi.staticfiles import StaticFiles
 from playwright.async_api import async_playwright
 from bs4 import BeautifulSoup
 import re
+from script import add_user_to_rooms, start_matrix_sync  # Importing from script.py
+import asyncio
 
 import uuid
 
 
 app = FastAPI()
+
+
+
+# Pydantic models for request validation
+class RoomData(BaseModel):
+    user_id: str
+    rooms: list
+
+
+@app.post("/add_user_to_rooms")
+async def add_user_to_matrix_rooms(room_data: RoomData):
+    try:
+        result = await add_user_to_rooms(room_data.user_id, room_data.rooms)
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error adding user to rooms: {str(e)}")
+
+
+#When FastAPI starts, we want to start the Matrix client and sync
+@app.on_event("startup")
+async def on_startup():
+    try:
+        await start_matrix_sync()  # Start Matrix sync loop
+        print("Matrix client started")
+    except Exception as e:
+        print(f"Error starting Matrix client: {e}")
+        raise HTTPException(status_code=500, detail="Failed to start Matrix client")
+
+
+
+
+
 
 # Enable CORS to allow requests from frontend (localhost:8080)
 app.add_middleware(
@@ -123,8 +157,8 @@ async def login(login_data: LoginData):
 
         # Launch Playwright (we no longer use `async with` to keep the browser running)
         p = await async_playwright().start()
-        #browser = await p.chromium.launch(headless=False)
-        browser = await p.chromium.launch(headless=True)
+        browser = await p.chromium.launch(headless=False)
+        #browser = await p.chromium.launch(headless=True)
         #browser = await p.chromium.launch(headless=False)
         page = await browser.new_page()
 
