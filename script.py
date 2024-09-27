@@ -5,7 +5,6 @@ import asyncio
 client = AsyncClient("http://localhost:8080", "@admin:localhost")
 password = "Hosting+12345"
 
-
 async def ensure_user_in_room(client, user_id, room_name):
     room_id = None
     # Fetch the list of joined rooms

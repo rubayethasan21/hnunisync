@@ -5,25 +5,36 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 from playwright.async_api import async_playwright
+#from playwright_stealth import stealth
 from bs4 import BeautifulSoup
 import re
 from typing import List
-import uuid
-from script import add_user_to_rooms, start_matrix_sync  # Import from script.py
 
+#from script import add_user_to_rooms
+#import asyncio
+import uuid
 
 app = FastAPI()
+
+
+# Pydantic models for request validation
+class RoomData(BaseModel):
+    user_id: str
+    rooms: list
 
 class Course(BaseModel):
     course_name: str
     course_id: str
     students: List[str]
 
-# Add model to handle matrix login data from frontend
-class MatrixLoginData(BaseModel):
-    userId: str
-    password: str
-    courses: List[Course]
+
+# @app.post("/add_user_to_rooms")
+# async def add_user_to_matrix_rooms(room_data: RoomData):
+#     try:
+#         result = await add_user_to_rooms(room_data.user_id, room_data.rooms)
+#         return result
+#     except Exception as e:
+#         raise HTTPException(status_code=500, detail=f"Error adding user to rooms: {str(e)}")
 
 
 # Enable CORS to allow requests from frontend (localhost:8080)
@@ -49,9 +60,11 @@ class LoginData(BaseModel):
     password: str
     loginOtp: str
 
+
 class OtpData(BaseModel):
     otp: str
     session_id: str  # Send back the session_id with OTP submission
+
 
 def extract_courses(html_content):
     """Extracts course information from the provided HTML content."""
@@ -79,6 +92,7 @@ def extract_courses(html_content):
 
     return courses
 
+
 async def visit_course_page_and_scrape(page, course):
     """Creates a dynamic URL for each course, navigates to it, and scrapes the content."""
     dynamic_url = f"https://ilias.hs-heilbronn.de/ilias.php?baseClass=ilrepositorygui&cmdNode=yc:ml:95&cmdClass=ilCourseMembershipGUI&ref_id={course['refId']}"
@@ -90,6 +104,7 @@ async def visit_course_page_and_scrape(page, course):
     print(f"Email Column Data for {course['name']}:", emails)
 
     return course_html_content, emails
+
 
 def extract_email_column_from_table(html_content):
     """Extracts the email column (Anmeldename) from the table in the provided HTML content."""
@@ -104,10 +119,12 @@ def extract_email_column_from_table(html_content):
 
     return email_column_data
 
+
 # Root route to render index.html
 @app.get("/")
 async def index(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
+
 
 @app.post("/ilias-login-and-get-course-member-info")
 async def iliasLoginAndGetCourseMemberInfo(login_data: LoginData):
@@ -226,29 +243,16 @@ async def iliasLoginAndGetCourseMemberInfo(login_data: LoginData):
 
 
 @app.post("/sync-with-matrix")
-async def syncWithMatrix(matrix_login_data: MatrixLoginData):
-    # Extract Matrix login credentials and courses from the request
-    matrix_user_id = matrix_login_data.userId
-    matrix_password = matrix_login_data.password
-    courses = matrix_login_data.courses
-
+async def syncWithMatrix(courses: List[Course]):
     course_dicts = [course.dict() for course in courses]  # Convert each Course object to a dictionary
     for course in course_dicts:
         print(f"Syncing course: {course['course_name']}")
         print(f"Students: {', '.join(course['students'])}")
 
-    rooms = [{"room_name": course['course_name']} for course in course_dicts]
-
-    # Call the function from script.py to add the user to the rooms, using Matrix credentials
-    #await add_user_to_rooms(matrix_user_id, rooms)
-
-    # Return a success response
+    # Return a success response, JSON serializable by default
     return {"status": "success", "courses_synced": course_dicts}
 
-# @app.on_event("startup")
-# async def startup_event():
-#     # Start the Matrix sync on application startup
-#     await start_matrix_sync()
+
 
 if __name__ == "__main__":
     import uvicorn
