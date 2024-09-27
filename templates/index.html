@@ -66,7 +66,13 @@
     </div>
 
     <!-- User List -->
-    <div id="user-list" class="mt-4" style="display: none;"></div>
+    <div id="user-list" class="mt-4" style="display: none;">
+        <h3>Kursliste mit eingeschriebenen Studenten</h3>
+        <button type="button" class="btn btn-primary btn-block" id="sync-matrix-btn">Sync with matrix</button>
+    </div>
+    <div id="sync-list" class="mt-4" style="display: none;"></div>
+
+
 </div>
 
 <!-- Include jQuery and Bootstrap JS -->
@@ -79,6 +85,7 @@
         const $loginForm = $('#loginForm');
         const $otpForm = $('#otpForm');
         const $userListDiv = $('#user-list');
+        const $syncListDiv = $('#sync-list');
         const $loginViewDiv = $('#login-view');
         const $otpViewDiv = $('#otp-view');
         const $loadingSpinner = $('#loading-spinner');
@@ -86,6 +93,7 @@
         const $otpBtn = $('#otp-btn');
 
         let sessionId;  // Store session ID for OTP submission
+        let courseUserListToSync;
 
         /**
          * Show the loading spinner and disable the button.
@@ -141,6 +149,7 @@
                         toggleViews($loginViewDiv, $otpViewDiv);  // Hide login view, show OTP view
                         hideLoading($otpBtn);
                         renderUserList(data.all_email_column_data);
+                        courseUserListToSync = data.all_email_column_data
                         toggleViews($otpViewDiv, $userListDiv);  // Hide OTP view, show user list
                     } else {
                         alert('Login failed');
@@ -154,6 +163,35 @@
             });
         }
 
+
+        function syncWithMatrix(courses){
+            $loadingSpinner.show();
+            console.log(courses)
+            $.ajax({
+                url: '/sync-with-matrix',
+                type: 'POST',
+                data: JSON.stringify(courses),
+                contentType: 'application/json',
+                success: function (data) {
+
+                    if (data.status === 'success') {
+                        $loadingSpinner.hide();
+                        $syncListDiv.show();
+                        $syncListDiv.html(data.courses_synced);
+                        console.log(data)
+                    } else {
+                        alert('Sync failed');
+                    }
+                },
+                error: function (err) {
+                    hideLoading($loginBtn);
+                    console.error('Error during login:', err);
+                    alert('Error during login');
+                }
+            });
+        }
+
+
         /**
          * Renders the list of users and courses.
          * @param {Array} courses - The array of courses and their users.
@@ -161,7 +199,8 @@
         function renderUserList(courses) {
             if (!courses) return;
 
-            let htmlContent = '<h3>Folgende Matrixräume werden synchronisiert</h3>';
+            let htmlContent = '';
+
 
             courses.forEach(course => {
                 htmlContent += `
@@ -185,7 +224,7 @@
                 `;
             });
 
-            $userListDiv.html(htmlContent);
+            $userListDiv.append(htmlContent);
         }
 
         /**
@@ -201,6 +240,9 @@
         // Attach form submit handlers
         $loginForm.on('submit', handleLogin);
         $otpForm.on('submit', handleOTPSubmit);
+        $('#sync-matrix-btn').on('click', function () {
+            syncWithMatrix(courseUserListToSync);  // Call the syncWithMatrix function and pass courses as parameter
+        });
     });
 </script>
 </body>

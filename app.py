@@ -8,6 +8,8 @@ from playwright.async_api import async_playwright
 #from playwright_stealth import stealth
 from bs4 import BeautifulSoup
 import re
+from typing import List
+
 #from script import add_user_to_rooms
 #import asyncio
 import uuid
@@ -19,6 +21,11 @@ app = FastAPI()
 class RoomData(BaseModel):
     user_id: str
     rooms: list
+
+class Course(BaseModel):
+    course_name: str
+    course_id: str
+    students: List[str]
 
 
 # @app.post("/add_user_to_rooms")
@@ -233,6 +240,17 @@ async def iliasLoginAndGetCourseMemberInfo(login_data: LoginData):
         "status": "success",
         "all_email_column_data": all_email_column_data
     })
+
+
+@app.post("/sync-with-matrix")
+async def syncWithMatrix(courses: List[Course]):
+    course_dicts = [course.dict() for course in courses]  # Convert each Course object to a dictionary
+    for course in course_dicts:
+        print(f"Syncing course: {course['course_name']}")
+        print(f"Students: {', '.join(course['students'])}")
+
+    # Return a success response, JSON serializable by default
+    return {"status": "success", "courses_synced": course_dicts}
 
 
 
