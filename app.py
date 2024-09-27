@@ -157,8 +157,8 @@ async def login(login_data: LoginData):
 
         # Launch Playwright (we no longer use `async with` to keep the browser running)
         p = await async_playwright().start()
-        browser = await p.chromium.launch(headless=False)
-        #browser = await p.chromium.launch(headless=True)
+        #browser = await p.chromium.launch(headless=False)
+        browser = await p.chromium.launch(headless=True)
         #browser = await p.chromium.launch(headless=False)
         page = await browser.new_page()
 
