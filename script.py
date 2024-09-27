@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 from nio import AsyncClient, RoomCreateResponse, RoomGetStateResponse, RoomInviteResponse, LoginResponse
 import asyncio
 
