@@ -49,12 +49,6 @@
                 <label for="password">Passwort:</label>
                 <input type="password" class="form-control" id="password" name="password" required>
             </div>
-
-            <div class="form-group">
-                <label for="loginOtp">Otp:</label>
-                <input type="text" class="form-control" id="loginOtp" name="loginOtp" required>
-            </div>
-
             <button type="submit" class="btn btn-primary btn-block" id="login-btn">Anmelden</button>
         </form>
     </div>
@@ -116,18 +110,26 @@
          */
         function handleLogin(event) {
             event.preventDefault();
+            toggleViews($loginViewDiv, $otpViewDiv);
+        }
+
+        /**
+         * Handles the OTP form submission.
+         */
+        function handleOTPSubmit(event) {
+            event.preventDefault();
 
             const loginData = {
                 username: $('#username').val(),
                 password: $('#password').val(),
-                loginOtp: $('#loginOtp').val()
+                loginOtp: $('#otp').val()
             };
 
             showLoading($loginBtn);
 
             // Make AJAX request to login endpoint
             $.ajax({
-                url: '/login',
+                url: '/ilias-login-and-get-course-member-info',
                 type: 'POST',
                 data: JSON.stringify(loginData),
                 contentType: 'application/json',
@@ -148,38 +150,6 @@
                     hideLoading($loginBtn);
                     console.error('Error during login:', err);
                     alert('Error during login');
-                }
-            });
-        }
-
-        /**
-         * Handles the OTP form submission.
-         */
-        function handleOTPSubmit(event) {
-            event.preventDefault();
-
-            const otpData = {
-                otp: $('#otp').val(),
-                session_id: sessionId  // Send session ID with OTP
-            };
-
-            showLoading($otpBtn);
-
-            // Make AJAX request to submit OTP
-            $.ajax({
-                url: '/submit-otp',
-                type: 'POST',
-                data: JSON.stringify(otpData),
-                contentType: 'application/json',
-                success: function (data) {
-                    hideLoading($otpBtn);
-
-                    renderUserList(data.all_email_column_data);
-                    toggleViews($otpViewDiv, $userListDiv);  // Hide OTP view, show user list
-                },
-                error: function (err) {
-                    hideLoading($otpBtn);
-                    console.error('Error during OTP submission:', err);
                 }
             });
         }

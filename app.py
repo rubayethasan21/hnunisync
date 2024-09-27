@@ -119,8 +119,8 @@ async def index(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
 
 
-@app.post("/login", response_class=HTMLResponse)
-async def login(login_data: LoginData):
+@app.post("/ilias-login-and-get-course-member-info")
+async def iliasLoginAndGetCourseMemberInfo(login_data: LoginData):
     login_url = ('https://login.hs-heilbronn.de/realms/hhn/protocol/openid-connect/auth'
                  '?response_mode=form_post&response_type=id_token&redirect_uri=https%3A%2F%2Filias.hs-heilbronn.de%2Fopenidconnect.php'
                  '&client_id=hhn_common_ilias&nonce=badc63032679bb541ff44ea53eeccb4e&state=2182e131aa3ed4442387157cd1823be0&scope=openid+openid')
@@ -234,49 +234,6 @@ async def login(login_data: LoginData):
         "all_email_column_data": all_email_column_data
     })
 
-
-# Submit OTP and continue login process
-@app.post("/submit-otp")
-async def submit_otp(otp_data: OtpData):
-    session_id = otp_data.session_id
-
-    if session_id not in session_data:
-        raise HTTPException(status_code=404, detail="Session not found")
-
-    page = session_data[session_id]["page"]
-
-    await page.fill('input[id="otp"]', otp_data.otp)
-    await page.click('input[id="kc-login"]')
-
-    await page.wait_for_url("https://ilias.hs-heilbronn.de/ilias.php?baseClass=ilDashboardGUI&cmd=jumpToSelectedItems",
-                            timeout=100000)
-
-    await page.screenshot(path="after_otp_submit.png")
-
-    course_list_url = 'https://ilias.hs-heilbronn.de/ilias.php?cmdClass=ilmembershipoverviewgui&cmdNode=jr&baseClass=ilmembershipoverviewgui'
-    await page.goto(course_list_url)
-    await page.wait_for_url(course_list_url, timeout=60000)
-
-    html_content = await page.content()
-    courses = extract_courses(html_content)
-
-    all_email_column_data = []
-    for course in courses:
-        try:
-            course_html_content, emails = await visit_course_page_and_scrape(page, course)
-            all_email_column_data.append({
-                'course_name': course['name'],
-                'course_id': course['refId'],
-                'students': emails
-            })
-        except Exception as e:
-            print(f"An error occurred while processing course {course['name']}: {e}")
-            continue
-
-    return JSONResponse({
-        "status": "success",
-        "all_email_column_data": all_email_column_data
-    })
 
 
 if __name__ == "__main__":

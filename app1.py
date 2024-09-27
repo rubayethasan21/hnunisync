@@ -5,11 +5,11 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 from playwright.async_api import async_playwright
-from playwright_stealth import stealth  # Importing stealth to hide headless browser behavior
+#from playwright_stealth import stealth
 from bs4 import BeautifulSoup
 import re
-from script import add_user_to_rooms, start_matrix_sync  # Importing from script.py
-import asyncio
+#from script import add_user_to_rooms
+#import asyncio
 import uuid
 
 app = FastAPI()
@@ -21,13 +21,13 @@ class RoomData(BaseModel):
     rooms: list
 
 
-@app.post("/add_user_to_rooms")
-async def add_user_to_matrix_rooms(room_data: RoomData):
-    try:
-        result = await add_user_to_rooms(room_data.user_id, room_data.rooms)
-        return result
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error adding user to rooms: {str(e)}")
+# @app.post("/add_user_to_rooms")
+# async def add_user_to_matrix_rooms(room_data: RoomData):
+#     try:
+#         result = await add_user_to_rooms(room_data.user_id, room_data.rooms)
+#         return result
+#     except Exception as e:
+#         raise HTTPException(status_code=500, detail=f"Error adding user to rooms: {str(e)}")
 
 
 # Enable CORS to allow requests from frontend (localhost:8080)
@@ -204,7 +204,7 @@ async def login(login_data: LoginData):
 
     # Ensure login is successful and take a screenshot for verification
     await page.wait_for_url("**/ilias.php?baseClass=ilDashboardGUI&cmd=jumpToSelectedItems", timeout=60000)
-    await page.screenshot(path="screenshot_full.png", full_page=True)
+    #await page.screenshot(path="screenshot_full.png", full_page=True)
 
     # Navigate to the course list
     course_list_url = 'https://ilias.hs-heilbronn.de/ilias.php?cmdClass=ilmembershipoverviewgui&cmdNode=jr&baseClass=ilmembershipoverviewgui'
