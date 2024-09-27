@@ -8,6 +8,7 @@
 
     <!-- Include Bootstrap CDN -->
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
 
     <style>
         /* Full-screen loading spinner layer */
@@ -49,10 +50,20 @@
                     <label for="username">Benutzername oder E-Mail:</label>
                     <input type="text" class="form-control" id="username" name="username" required>
                 </div>
+
+
                 <div class="form-group">
                     <label for="password">Passwort:</label>
-                    <input type="password" class="form-control" id="password" name="password" required>
+                    <div class="input-group">
+                        <input type="password" class="form-control" id="password" name="password" required>
+                        <div class="input-group-append">
+                            <span class="input-group-text" id="togglePassword" style="cursor: pointer;">
+                                <i class="fa fa-eye"></i>
+                            </span>
+                        </div>
+                    </div>
                 </div>
+
                 <button type="submit" class="btn btn-primary btn-block" id="login-btn">Anmelden</button>
             </form>
         </div>
@@ -85,23 +96,34 @@
         <div class="modal-dialog" role="document">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="matrixLoginModalLabel">Matrix Login</h5>
+                    <h5 class="modal-title" id="matrixLoginModalLabel">Matrix Anmeldung</h5>
                     <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                         <span aria-hidden="true">&times;</span>
                     </button>
                 </div>
                 <div class="modal-body">
-                    <p class="text-center">Please login to Matrix to complete the sync process</p>
+                    <p class="text-center">Bitte melden Sie sich bei Matrix an, um den Synchronisierungsprozess abzuschließen.</p>
                     <form id="matrixLoginForm">
                         <div class="form-group">
-                            <label for="matrix-user-id">Matrix User ID:</label>
+                            <label for="matrix-user-id">Matrix Benutzer ID:</label>
                             <input type="text" class="form-control" id="matrix-user-id" name="matrix-user-id" required>
                         </div>
+
+
                         <div class="form-group">
-                            <label for="matrix-password">Matrix Password:</label>
-                            <input type="password" class="form-control" id="matrix-password" name="matrix-password" required>
+                            <label for="password">Matrix Passwort:</label>
+                            <div class="input-group">
+                                <input type="password" class="form-control" id="matrix-password" name="matrix-password" required>
+                                <div class="input-group-append">
+                                    <span class="input-group-text" id="toggleMatrixPassword" style="cursor: pointer;">
+                                        <i class="fa fa-eye"></i>
+                                    </span>
+                                </div>
+                            </div>
                         </div>
-                        <button type="submit" class="btn btn-primary btn-block" id="matrix-login-btn">Matrix Login</button>
+
+
+                        <button type="submit" class="btn btn-primary btn-block" id="matrix-login-btn">Matrix Anmelden</button>
                     </form>
                 </div>
             </div>
@@ -136,6 +158,21 @@
             $matrixLoginModal.on('hidden.bs.modal', function () {
                 $('.modal-backdrop').remove();
             });
+
+            $('#togglePassword').on('click', function () {
+                const passwordField = $('#password');
+                const type = passwordField.attr('type') === 'password' ? 'text' : 'password';
+                passwordField.attr('type', type);
+                $(this).find('i').toggleClass('fa-eye fa-eye-slash'); // Toggle eye icon
+            });
+
+            $('#toggleMatrixPassword').on('click', function () {
+                const passwordField = $('#matrix-password');
+                const type = passwordField.attr('type') === 'password' ? 'text' : 'password';
+                passwordField.attr('type', type);
+                $(this).find('i').toggleClass('fa-eye fa-eye-slash'); // Toggle eye icon
+            });
+
 
             /**
              * Show the loading spinner and disable the button.
