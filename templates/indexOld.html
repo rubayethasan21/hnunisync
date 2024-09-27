@@ -49,12 +49,6 @@
                 <label for="password">Passwort:</label>
                 <input type="password" class="form-control" id="password" name="password" required>
             </div>
-
-            <div class="form-group">
-                <label for="loginOtp">Otp:</label>
-                <input type="text" class="form-control" id="loginOtp" name="loginOtp" required>
-            </div>
-
             <button type="submit" class="btn btn-primary btn-block" id="login-btn">Anmelden</button>
         </form>
     </div>
@@ -119,8 +113,7 @@
 
             const loginData = {
                 username: $('#username').val(),
-                password: $('#password').val(),
-                loginOtp: $('#loginOtp').val()
+                password: $('#password').val()
             };
 
             showLoading($loginBtn);
@@ -134,12 +127,9 @@
                 success: function (data) {
                     hideLoading($loginBtn);
 
-                    if (data.status === 'success') {
+                    if (data.status === 'otp_required') {
                         sessionId = data.session_id;  // Save session ID
                         toggleViews($loginViewDiv, $otpViewDiv);  // Hide login view, show OTP view
-                        hideLoading($otpBtn);
-                        renderUserList(data.all_email_column_data);
-                        toggleViews($otpViewDiv, $userListDiv);  // Hide OTP view, show user list
                     } else {
                         alert('Login failed');
                     }
