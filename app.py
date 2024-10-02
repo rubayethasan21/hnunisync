@@ -94,9 +94,12 @@ async def syncWithMatrix(matrix_login_data: MatrixLoginData):
             raise HTTPException(status_code=500, detail=f"Failed to create room {room_name}.")
 
         # Invite users to the room
-        invite_users_to_room(access_token, room_id, matrix_user_ids)
+        added_member_list_into_matrix_rooms = invite_users_to_room(access_token, room_id, matrix_user_ids)
 
-        rooms.append({"room_name": room_name, "room_id": room_id, "members": matrix_user_ids})
+        if added_member_list_into_matrix_rooms:
+            added_member_list_into_matrix_rooms.append(f"@{matrix_user_id}:{matrix_domain}")
+            rooms.append({"room_name": room_name, "room_id": room_id, "members": added_member_list_into_matrix_rooms})
+
 
     # Step 3: Logout after completing the task
     logout(access_token)

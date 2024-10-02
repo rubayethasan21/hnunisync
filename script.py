@@ -68,14 +68,20 @@ def invite_users_to_room(access_token: str, room_id: str, user_list: List[str]):
         "Content-Type": "application/json"
     }
 
+    added_member_list_into_matrix_rooms = []
     for user in user_list:
         payload = {"user_id": user}
         try:
             response = requests.post(url, headers=headers, json=payload)
             response.raise_for_status()
+            print('response')
+            print(response)
             print(f"Successfully invited {user} to room {room_id}")
+            added_member_list_into_matrix_rooms.append(user)
         except requests.RequestException as e:
             print(f"Error inviting {user}: {e}")
+
+    return added_member_list_into_matrix_rooms
 
 
 # Matrix logout function
