@@ -1,82 +1,120 @@
-from nio import AsyncClient, RoomCreateResponse, RoomGetStateResponse, RoomInviteResponse, LoginResponse
-import asyncio
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
+from typing import List
+import requests
 
-# Matrix client initialization
-client = AsyncClient("http://localhost:8080", "@admin:localhost")
-password = "Hosting+12345"
+app = FastAPI()
 
-async def ensure_user_in_room(client, user_id, room_name):
-    room_id = None
-    # Fetch the list of joined rooms
-    joined_rooms = await client.joined_rooms()
-
-    if joined_rooms.rooms:
-        for room in joined_rooms.rooms:
-            state = await client.room_get_state(room)
-            if isinstance(state, RoomGetStateResponse):
-                for event in state.events:
-                    if event['type'] == 'm.room.name' and event['content'].get('name') == room_name:
-                        room_id = room
-                        break
-            if room_id:
-                break
-
-    if room_id:
-        # Room exists, invite the user to the room
-        try:
-            response = await client.room_invite(room_id, user_id)
-            if isinstance(response, RoomInviteResponse):
-                print(f"User {user_id} invited to room {room_id}")
-            else:
-                print(f"Failed to invite user {user_id} to room {room_id}: {response}")
-        except Exception as e:
-            print(f"Error inviting user {user_id} to room {room_id}: {e}")
-    else:
-        # Room does not exist, create the room and invite the user
-        try:
-            response = await client.room_create(name=room_name)
-            if isinstance(response, RoomCreateResponse):
-                room_id = response.room_id
-                print(f"Room {room_name} created with ID {room_id}")
-                invite_response = await client.room_invite(room_id, user_id)
-                if isinstance(invite_response, RoomInviteResponse):
-                    print(f"User {user_id} invited to new room {room_id}")
-                else:
-                    print(f"Failed to invite user {user_id} to new room {room_id}: {invite_response}")
-            else:
-                print(f"Failed to create room {room_name}: {response}")
-        except Exception as e:
-            print(f"Error creating room {room_name} and inviting user {user_id}: {e}")
+# Synapse server details
+server_url = "http://localhost:8080"
 
 
-async def add_user_to_rooms(user_id, rooms):
+# Pydantic models for request data
+class Course(BaseModel):
+    course_name: str
+    course_id: str
+    students: List[str]
+
+
+class MatrixLoginData(BaseModel):
+    userId: str
+    password: str
+    courses: List[Course]
+
+
+# Matrix login function
+def login(username: str, password: str):
+    url = f"{server_url}/_matrix/client/r0/login"
+    headers = {"Content-Type": "application/json"}
+    payload = {"type": "m.login.password", "user": username, "password": password}
+
     try:
-        await client.login(password)
-        for room in rooms:
-            room_name = room.get('room_name')
-            if room_name:
-                await ensure_user_in_room(client, user_id, room_name)
-        await client.close()
-        return {"status": "User added to specified rooms"}
-    except Exception as e:
-        print(f"Error: {e}")
-        raise Exception(f"Failed to add user to rooms: {str(e)}")
+        response = requests.post(url, headers=headers, json=payload)
+        response.raise_for_status()
+        data = response.json()
+        return data.get("access_token"), data.get("user_id")
+    except requests.RequestException as e:
+        print(f"Login error: {e}")
+        return None, None
 
+# Matrix room creation function
+def create_room(access_token: str, room_name: str, room_topic: str):
+    url = f"{server_url}/_matrix/client/r0/createRoom"
+    headers = {
+        "Authorization": f"Bearer {access_token}",
+        "Content-Type": "application/json"
+    }
+    payload = {
+        "name": room_name,
+        "topic": room_topic,
+        "preset": "private_chat"
+    }
 
-# Matrix sync loop
-async def sync_loop(client):
-    while True:
-        await client.sync(timeout=30000)  # Sync every 30 seconds
-
-
-async def start_matrix_sync():
     try:
-        login_response = await client.login(password)
-        if isinstance(login_response, LoginResponse) and login_response.user_id:
-            print(f"Logged in as {login_response.user_id}")
-            asyncio.create_task(sync_loop(client))  # Run the sync loop in the background
-        else:
-            print("Failed to log in, missing user_id in response")
-    except Exception as e:
-        print(f"Failed to log in: {e}")
-        raise Exception("Failed to start Matrix sync")
+        response = requests.post(url, headers=headers, json=payload)
+        response.raise_for_status()
+        room_id = response.json().get("room_id")
+        return room_id
+    except requests.RequestException as e:
+        print(f"Error creating room: {e}")
+        return None
+
+
+# Invite users to room
+def invite_users_to_room(access_token: str, room_id: str, user_list: List[str]):
+    url = f"{server_url}/_matrix/client/r0/rooms/{room_id}/invite"
+    headers = {
+        "Authorization": f"Bearer {access_token}",
+        "Content-Type": "application/json"
+    }
+
+    for user in user_list:
+        payload = {"user_id": user}
+        try:
+            response = requests.post(url, headers=headers, json=payload)
+            response.raise_for_status()
+            print(f"Successfully invited {user} to room {room_id}")
+        except requests.RequestException as e:
+            print(f"Error inviting {user}: {e}")
+
+
+# Matrix logout function
+def logout(access_token: str):
+    url = f"{server_url}/_matrix/client/r0/logout"
+    headers = {"Authorization": f"Bearer {access_token}"}
+
+    try:
+        response = requests.post(url, headers=headers)
+        response.raise_for_status()
+        print("Logout successful!")
+    except requests.RequestException as e:
+        print(f"Error logging out: {e}")
+
+
+# Endpoint to handle matrix sync and invite process
+# @app.post("/sync-with-matrix")
+# async def sync_with_matrix(matrix_login_data: MatrixLoginData):
+#     # Step 1: Login to Matrix
+#     access_token, user_id = login(matrix_login_data.userId, matrix_login_data.password)
+#
+#     if not access_token:
+#         raise HTTPException(status_code=401, detail="Login to Matrix failed.")
+#
+#     # Step 2: Process each course
+#     for course in matrix_login_data.courses:
+#         room_name = course.course_name
+#         students = course.students
+#
+#         # Step 3: Create room for the course
+#         room_id = create_room(access_token, room_name, f"Room for {room_name}")
+#
+#         if not room_id:
+#             raise HTTPException(status_code=500, detail=f"Failed to create room {room_name}.")
+#
+#         # Step 4: Invite students to the room
+#         invite_users_to_room(access_token, room_id, students)
+#
+#     # Step 5: Logout from Matrix
+#     logout(access_token)
+#
+#     return {"status": "success", "message": "Rooms created and users invited successfully."}

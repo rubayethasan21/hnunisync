@@ -276,7 +276,7 @@
                             // Ensure the modal backdrop is removed
                             $('.modal-backdrop').remove();
 
-                            renderSyncList(data.courses_synced);
+                            renderSyncList(data.rooms);
                             toggleViews($userListViewDiv, $syncListViewDiv); // Show sync result
                         } else {
                             alert('Sync failed');
@@ -324,25 +324,30 @@
                 $userListViewDiv.append(htmlContent);
             }
 
-            function renderSyncList(courses) {
-                console.log(courses);
-                if (!courses) return;
+            function renderSyncList(rooms) {
+                console.log(rooms);
+                if (!rooms) return;
 
                 let htmlContent = '';
 
-                courses.forEach(course => {
+                rooms.forEach(room => {
                     htmlContent += `
                     <div class="card mt-3">
                         <div class="card-header">
-                            <strong>Matrix Room: ${course.course_name}</strong>
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <strong class="room-name">Matrix Room Name: ${room.room_name}</strong>
+                            </div>
+                            <div class="text-muted room-id">
+                                <strong>Matrix Room ID: ${room.room_id}</strong>
+                            </div>
                         </div>
                         <div class="card-body">
                             <p><strong>Benutzer:</strong></p>
                             <ul class="list-group">
                 `;
 
-                    course.students.forEach(student => {
-                        htmlContent += `<li class="list-group-item">${student}</li>`;
+                    room.members.forEach(member => {
+                        htmlContent += `<li class="list-group-item">${member}</li>`;
                     });
 
                     htmlContent += `

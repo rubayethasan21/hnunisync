@@ -8,3 +8,4 @@ gunicorn==23.0.0
 beautifulsoup4==4.12.3
 matrix-nio==0.25.1
 quart==0.19.6
+requests==2.32.3
