@@ -39,6 +39,9 @@ app.add_middleware(
 templates = Jinja2Templates(directory="templates")
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
+#matrix_domain = 'localhost'  #local
+matrix_domain = '85.215.118.180'  #remote
+
 # Store browser session globally with unique session IDs
 session_data = {}
 
@@ -54,7 +57,7 @@ class OtpData(BaseModel):
 
 
 # Function to convert email domain for Matrix user IDs and exclude the logged-in user
-def convert_emails_to_matrix_user_ids(emails, matrix_domain, logged_in_user):
+def convert_emails_to_matrix_user_ids(emails, logged_in_user):
     matrix_user_ids = []
     for email in emails:
         username = email.split('@')[0]  # Extract username before the '@'
@@ -74,7 +77,6 @@ async def syncWithMatrix(matrix_login_data: MatrixLoginData):
     courses = matrix_login_data.courses
 
     # Determine the Matrix domain dynamically (local or production)
-    matrix_domain = 'localhost'  # Default to 'localhost'
     print('matrix_user_id:', matrix_user_id)
 
     # Step 1: Login to Matrix
@@ -86,7 +88,7 @@ async def syncWithMatrix(matrix_login_data: MatrixLoginData):
     rooms = []
     for course in courses:
         room_name = course.course_name
-        matrix_user_ids = convert_emails_to_matrix_user_ids(course.students, matrix_domain, matrix_user_id)
+        matrix_user_ids = convert_emails_to_matrix_user_ids(course.students, matrix_user_id)
 
         # Create a room for the course
         room_id = create_room(access_token, room_name, f"Room for {room_name}")

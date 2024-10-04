@@ -5,8 +5,11 @@ import requests
 
 app = FastAPI()
 
+#matrix_domain = 'localhost'  # local
+matrix_domain = '85.215.118.180'  # remote
+
 # Synapse server details
-server_url = "http://localhost:8080"
+server_url = "http://"+matrix_domain+":8081"
 
 
 # Pydantic models for request data
@@ -95,32 +98,3 @@ def logout(access_token: str):
         print("Logout successful!")
     except requests.RequestException as e:
         print(f"Error logging out: {e}")
-
-
-# Endpoint to handle matrix sync and invite process
-# @app.post("/sync-with-matrix")
-# async def sync_with_matrix(matrix_login_data: MatrixLoginData):
-#     # Step 1: Login to Matrix
-#     access_token, user_id = login(matrix_login_data.userId, matrix_login_data.password)
-#
-#     if not access_token:
-#         raise HTTPException(status_code=401, detail="Login to Matrix failed.")
-#
-#     # Step 2: Process each course
-#     for course in matrix_login_data.courses:
-#         room_name = course.course_name
-#         students = course.students
-#
-#         # Step 3: Create room for the course
-#         room_id = create_room(access_token, room_name, f"Room for {room_name}")
-#
-#         if not room_id:
-#             raise HTTPException(status_code=500, detail=f"Failed to create room {room_name}.")
-#
-#         # Step 4: Invite students to the room
-#         invite_users_to_room(access_token, room_id, students)
-#
-#     # Step 5: Logout from Matrix
-#     logout(access_token)
-#
-#     return {"status": "success", "message": "Rooms created and users invited successfully."}
