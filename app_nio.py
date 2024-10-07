@@ -9,7 +9,11 @@ from bs4 import BeautifulSoup
 import re
 from typing import List
 import uuid
-from script import login, create_room, invite_users_to_room, logout, find_room_by_name, matrix_domain  # Import Matrix functions from script.py
+import asyncio  # Import asyncio for async matrix-nio functions
+
+from script import (
+    login, create_room, invite_users_to_room, logout, find_room_by_name, matrix_domain
+)  # Import Matrix functions from script.py
 
 
 app = FastAPI()
@@ -38,9 +42,6 @@ app.add_middleware(
 # Setup Jinja2 templates
 templates = Jinja2Templates(directory="templates")
 app.mount("/static", StaticFiles(directory="static"), name="static")
-
-#matrix_domain = 'localhost'  #local
-#matrix_domain = '85.215.118.180'  #remote
 
 # Store browser session globally with unique session IDs
 session_data = {}
@@ -76,11 +77,8 @@ async def syncWithMatrix(matrix_login_data: MatrixLoginData):
     matrix_password = matrix_login_data.password
     courses = matrix_login_data.courses
 
-    # Determine the Matrix domain dynamically (local or production)
-    print('matrix_user_id:', matrix_user_id)
-
-    # Step 1: Login to Matrix
-    access_token, user_id = login(matrix_user_id, matrix_password)
+    # Step 1: Login to Matrix (using `await` since it's an async function now)
+    access_token, user_id = await login(matrix_user_id, matrix_password)
     if not access_token:
         raise HTTPException(status_code=401, detail="Login to Matrix failed.")
 
@@ -90,28 +88,25 @@ async def syncWithMatrix(matrix_login_data: MatrixLoginData):
         room_name = course.course_name
         matrix_user_ids = convert_emails_to_matrix_user_ids(course.students, matrix_user_id)
 
-        # Step 2.1: Check if the room already exists
-        room_id = find_room_by_name(access_token, room_name)
+        # Step 2.1: Check if the room already exists (using `await`)
+        room_id = await find_room_by_name(access_token, room_name)
 
-        # Step 2.2: If the room doesn't exist, create a new one
+        # Step 2.2: If the room doesn't exist, create a new one (using `await`)
         if not room_id:
             print(f"Room '{room_name}' does not exist. Creating a new one...")
-            room_id = create_room(access_token, room_name, f"Room for {room_name}")
+            room_id = await create_room(access_token, room_name, f"Room for {room_name}")
             if not room_id:
                 raise HTTPException(status_code=500, detail=f"Failed to create room {room_name}.")
 
-        # Step 3: Invite users to the room
-        added_member_list_into_matrix_rooms = invite_users_to_room(access_token, room_id, matrix_user_ids)
+        # Step 3: Invite users to the room (using `await`)
+        added_member_list_into_matrix_rooms = await invite_users_to_room(access_token, room_id, matrix_user_ids)
 
         if added_member_list_into_matrix_rooms:
             added_member_list_into_matrix_rooms.append(f"@{matrix_user_id}:{matrix_domain}")
             rooms.append({"room_name": room_name, "room_id": room_id, "members": added_member_list_into_matrix_rooms})
 
-    # Step 4: Logout after completing the task
-    logout(access_token)
-
-    return {"status": "success", "message": "Rooms created and users invited successfully.", "rooms": rooms}
-
+    # Step 4: Logout after completing the task (using `await`)
+    await logout(access_token)
 
 # Playwright-based login and ILIAS course member extraction remains unchanged
 @app.post("/ilias-login-and-get-course-member-info")
