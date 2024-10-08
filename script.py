@@ -6,7 +6,8 @@ import requests
 app = FastAPI()
 
 #matrix_domain = 'localhost'  # local
-matrix_domain = '85.215.118.180'  # remote
+matrix_domain ="unifyhn.de" #remote
+#matrix_domain = '85.215.118.180'  # remote
 
 # Synapse server details
 server_url = "http://"+matrix_domain+":8081"
