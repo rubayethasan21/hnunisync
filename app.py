@@ -76,11 +76,8 @@ async def syncWithMatrix(matrix_login_data: MatrixLoginData):
     matrix_password = matrix_login_data.password
     courses = matrix_login_data.courses
 
-    # Determine the Matrix domain dynamically (local or production)
-    print('matrix_user_id:', matrix_user_id)
-
     # Step 1: Login to Matrix
-    access_token, user_id = login(matrix_user_id, matrix_password)
+    access_token, user_id = await login(matrix_user_id, matrix_password)
     if not access_token:
         raise HTTPException(status_code=401, detail="Login to Matrix failed.")
 
@@ -91,24 +88,24 @@ async def syncWithMatrix(matrix_login_data: MatrixLoginData):
         matrix_user_ids = convert_emails_to_matrix_user_ids(course.students, matrix_user_id)
 
         # Step 2.1: Check if the room already exists
-        room_id = find_room_by_name(access_token, room_name)
+        room_id = await find_room_by_name(access_token, room_name)
 
         # Step 2.2: If the room doesn't exist, create a new one
         if not room_id:
             print(f"Room '{room_name}' does not exist. Creating a new one...")
-            room_id = create_room(access_token, room_name, f"Room for {room_name}")
+            room_id = await create_room(access_token, room_name, f"Room for {room_name}")
             if not room_id:
                 raise HTTPException(status_code=500, detail=f"Failed to create room {room_name}.")
 
         # Step 3: Invite users to the room
-        added_member_list_into_matrix_rooms = invite_users_to_room(access_token, room_id, matrix_user_ids)
+        added_member_list_into_matrix_rooms = await invite_users_to_room(access_token, room_id, matrix_user_ids)
 
         if added_member_list_into_matrix_rooms:
             added_member_list_into_matrix_rooms.append(f"@{matrix_user_id}:{matrix_domain}")
             rooms.append({"room_name": room_name, "room_id": room_id, "members": added_member_list_into_matrix_rooms})
 
     # Step 4: Logout after completing the task
-    logout(access_token)
+    await logout(access_token)
 
     return {"status": "success", "message": "Rooms created and users invited successfully.", "rooms": rooms}
 
