@@ -279,13 +279,13 @@
                             renderSyncList(data.rooms);
                             toggleViews($userListViewDiv, $syncListViewDiv); // Show sync result
                         } else {
-                            alert('Sync failed');
+                            alert('Please Sync Again');
                         }
                     },
                     error: function (err) {
                         hideLoading($matrixLoginBtn);
                         console.error('Error during sync:', err);
-                        alert('Error during sync');
+                        alert('Please Sync Again');
                     }
                 });
             }
