@@ -1,96 +1,126 @@
-from nio import AsyncClient, RoomCreateResponse, LoginResponse, RoomInviteError, LoginError
+# script.py
+
+from typing import List
 import asyncio
+from nio import AsyncClient, AsyncClientConfig, LoginResponse, RoomCreateResponse, RoomGetStateEventResponse, RoomInviteResponse, RoomPreset
+from nio.exceptions import MatrixRequestError, MatrixRateLimitError
 
-matrix_domain = 'localhost'  # local
-#matrix_domain = '85.215.118.180'  # remote
+# Matrix domain and server URL
+# matrix_domain = "localhost"  # Local server domain
+matrix_domain = "unifyhn.de"  # Remote server domain
+homeserver = f"http://{matrix_domain}:8081"
 
-# Synapse server details
-homeserver_url = f"http://{matrix_domain}:8081"
-
-# Create an asynchronous client
-client = AsyncClient(homeserver_url, "")
-
-
-# Matrix login function using matrix-nio
+# Matrix login function
 async def login(username: str, password: str):
-    # Create an instance of the Matrix client
-    client = AsyncClient(homeserver_url, username)
-
-    # Attempt to log in with the provided username and password
-    response = await client.login(password)
-
-    # Check the type of response
-    if isinstance(response, LoginResponse):
-        print(f"Login successful for {response.user_id}")
-        return client.access_token, client.user_id
-    else:
-        print(f"Login failed: {response.message}")
-        return None, None
-#except Exception as e:
-    #print(f"Login error: {e}")
-    #return None, None
-
-# Matrix room creation function using matrix-nio
-async def create_room(access_token: str, room_name: str, room_topic: str):
+    client = AsyncClient(homeserver, username)
     try:
-        response = await client.room_create(name=room_name, topic=room_topic)
-        if isinstance(response, RoomCreateResponse):
-            print(f"Room '{room_name}' created with ID: {response.room_id}")
+        response = await client.login(password)
+        if isinstance(response, LoginResponse) and response.access_token:
+            print(f"Logged in as {username}")
+            return client
+        else:
+            print(f"Failed to log in as {username}: {response.message}")
+            await client.close()
+            return None
+    except Exception as e:
+        print(f"Login error: {e}")
+        await client.close()
+        return None
+
+# Matrix room creation function
+async def create_room(client: AsyncClient, room_name: str, room_topic: str):
+    try:
+        response = await client.room_create(
+            name=room_name,
+            topic=room_topic,
+            preset=RoomPreset.private_chat
+        )
+        if isinstance(response, RoomCreateResponse) and response.room_id:
+            print(f"Created room '{room_name}' with ID: {response.room_id}")
             return response.room_id
         else:
-            print(f"Error creating room: {response}")
+            print(f"Failed to create room '{room_name}': {response.message}")
             return None
     except Exception as e:
         print(f"Error creating room: {e}")
         return None
 
-
-# Invite users to room using matrix-nio
-async def invite_users_to_room(access_token: str, room_id: str, user_list: list):
-    added_member_list_into_matrix_rooms = []
-    for user in user_list:
-        try:
-            response = await client.room_invite(room_id, user)
-            if isinstance(response, RoomInviteError):
-                print(f"Failed to invite {user}: {response.message}")
-            else:
-                print(f"Successfully invited {user} to room {room_id}")
-                added_member_list_into_matrix_rooms.append(user)
-        except Exception as e:
-            print(f"Error inviting users: {e}")
-
-    return added_member_list_into_matrix_rooms
-
-# Fetch the list of rooms the user has joined using matrix-nio
-async def get_joined_rooms(access_token: str):
+# Fetch the list of rooms the user has joined
+async def get_joined_rooms(client: AsyncClient):
     try:
         response = await client.joined_rooms()
-        return response.rooms if hasattr(response, 'rooms') else []
+        if response.rooms:
+            return response.rooms
+        else:
+            return []
     except Exception as e:
         print(f"Error getting joined rooms: {e}")
         return []
 
-
 # Check if a room with the desired name already exists
-async def find_room_by_name(access_token: str, room_name: str):
-    joined_rooms = await get_joined_rooms(access_token)
-
+async def find_room_by_name(client: AsyncClient, room_name: str):
+    joined_rooms = await get_joined_rooms(client)
     for room_id in joined_rooms:
         try:
             response = await client.room_get_state_event(room_id, "m.room.name")
-            if response and response.content.get("name") == room_name:
-                print(f"Room '{room_name}' already exists with ID: {room_id}")
-                return room_id
+            if isinstance(response, RoomGetStateEventResponse):
+                room_state = response.event
+                if room_state.get("name") == room_name:
+                    print(f"Room '{room_name}' already exists with ID: {room_id}")
+                    return room_id
+        except MatrixRequestError as e:
+            if e.status_code != 404:
+                print(f"Error checking room name: {e}")
         except Exception as e:
             print(f"Error checking room name: {e}")
-
     return None
 
+# Invite users to room with rate limiting and improved error handling
+async def invite_users_to_room(client: AsyncClient, room_id: str, user_list: List[str]):
+    added_member_list_into_matrix_rooms = []
+    for user in user_list:
+        max_retries = 5
+        retries = 0
+        success = False
+        while retries < max_retries and not success:
+            try:
+                response = await client.room_invite(room_id, user)
+                if isinstance(response, RoomInviteResponse) and response.status_code == 200:
+                    print(f"Successfully invited {user} to room {room_id}")
+                    added_member_list_into_matrix_rooms.append(user)
+                    success = True
+                else:
+                    print(f"Failed to invite {user}: {response.status_code} - {response.message}")
+                    retries += 1
+                    await asyncio.sleep(1)
+            except MatrixRateLimitError as e:
+                retry_after = e.retry_after_ms / 1000 if e.retry_after_ms else 1
+                print(f"Rate limited when inviting {user}. Retrying after {retry_after} seconds.")
+                await asyncio.sleep(retry_after)
+                retries += 1
+            except MatrixRequestError as e:
+                if e.status_code == 403:
+                    print(f"Permission denied when inviting {user}. Skipping.")
+                    break  # Do not retry on permission errors
+                else:
+                    print(f"HTTP error inviting {user}: {e.status_code} - {e}")
+                    retries += 1
+                    await asyncio.sleep(1)
+            except Exception as e:
+                print(f"Unexpected error inviting {user}: {e}")
+                retries += 1
+                await asyncio.sleep(1)
+        if not success:
+            print(f"Failed to invite {user} after {max_retries} attempts.")
+        await asyncio.sleep(0.1)  # Small delay between requests
+    return added_member_list_into_matrix_rooms
 
-# Matrix logout function using matrix-nio
-async def logout(access_token: str):
+# Matrix logout function
+async def logout(client: AsyncClient):
     try:
         await client.logout()
+        await client.close()
         print("Logout successful!")
     except Exception as e:
         print(f"Error logging out: {e}")
+        await client.close()

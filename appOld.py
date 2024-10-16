@@ -1,3 +1,5 @@
+# app.py
+
 from fastapi import FastAPI, Request, HTTPException
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
@@ -11,22 +13,9 @@ from typing import List
 import uuid
 from script import login, create_room, invite_users_to_room, logout, find_room_by_name, matrix_domain  # Import Matrix functions from script.py
 
-
 app = FastAPI()
 
-class Course(BaseModel):
-    course_name: str
-    course_id: str
-    students: List[str]
-
-# Add model to handle matrix login data from frontend
-class MatrixLoginData(BaseModel):
-    userId: str
-    password: str
-    courses: List[Course]
-
-
-# Enable CORS to allow requests from frontend (localhost:8080)
+# Enable CORS to allow requests from frontend
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  # Allow all origins (for development)
@@ -39,9 +28,6 @@ app.add_middleware(
 templates = Jinja2Templates(directory="templates")
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
-#matrix_domain = 'localhost'  #local
-#matrix_domain = '85.215.118.180'  #remote
-
 # Store browser session globally with unique session IDs
 session_data = {}
 
@@ -51,10 +37,15 @@ class LoginData(BaseModel):
     password: str
     loginOtp: str
 
-class OtpData(BaseModel):
-    otp: str
-    session_id: str  # Send back the session_id with OTP submission
+class Course(BaseModel):
+    course_name: str
+    course_id: str
+    students: List[str]
 
+class MatrixLoginData(BaseModel):
+    userId: str
+    password: str
+    courses: List[Course]
 
 # Function to convert email domain for Matrix user IDs and exclude the logged-in user
 def convert_emails_to_matrix_user_ids(emails, logged_in_user):
@@ -76,7 +67,6 @@ async def syncWithMatrix(matrix_login_data: MatrixLoginData):
     matrix_password = matrix_login_data.password
     courses = matrix_login_data.courses
 
-    # Determine the Matrix domain dynamically (local or production)
     print('matrix_user_id:', matrix_user_id)
 
     # Step 1: Login to Matrix
@@ -112,8 +102,7 @@ async def syncWithMatrix(matrix_login_data: MatrixLoginData):
 
     return {"status": "success", "message": "Rooms created and users invited successfully.", "rooms": rooms}
 
-
-# Playwright-based login and ILIAS course member extraction remains unchanged
+# Playwright-based login and ILIAS course member extraction
 @app.post("/ilias-login-and-get-course-member-info")
 async def iliasLoginAndGetCourseMemberInfo(login_data: LoginData):
     login_url = ('https://login.hs-heilbronn.de/realms/hhn/protocol/openid-connect/auth'
@@ -125,7 +114,7 @@ async def iliasLoginAndGetCourseMemberInfo(login_data: LoginData):
     # Launch Playwright and configure it to bypass detection
     p = await async_playwright().start()
     browser = await p.chromium.launch(headless=True, args=["--disable-blink-features=AutomationControlled"])
-    context = await browser.new_context(user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36")
+    context = await browser.new_context(user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64)")
     page = await context.new_page()
 
     # Use the following tricks to hide the headless browser:
@@ -170,8 +159,11 @@ async def iliasLoginAndGetCourseMemberInfo(login_data: LoginData):
             'students': emails
         })
 
-    return JSONResponse({"status": "success", "all_email_column_data": all_email_column_data})
+    # Close browser sessions to free up resources
+    await browser.close()
+    await p.stop()
 
+    return JSONResponse({"status": "success", "all_email_column_data": all_email_column_data})
 
 def extract_courses(html_content):
     soup = BeautifulSoup(html_content, 'html.parser')
@@ -184,10 +176,11 @@ def extract_courses(html_content):
             if course_name_element:
                 course_name = course_name_element.get_text(strip=True)
                 course_url = course_name_element.get('href')
-                course_ref_id = re.search(r'ref_id=(\d+)', course_url).group(1)
-                courses.append({'name': course_name, 'refId': course_ref_id, 'url': course_url})
+                course_ref_id_match = re.search(r'ref_id=(\d+)', course_url)
+                if course_ref_id_match:
+                    course_ref_id = course_ref_id_match.group(1)
+                    courses.append({'name': course_name, 'refId': course_ref_id, 'url': course_url})
     return courses
-
 
 async def visit_course_page_and_scrape(page, course):
     dynamic_url = f"https://ilias.hs-heilbronn.de/ilias.php?baseClass=ilrepositorygui&cmdNode=yc:ml:95&cmdClass=ilCourseMembershipGUI&ref_id={course['refId']}"
@@ -196,23 +189,23 @@ async def visit_course_page_and_scrape(page, course):
     emails = extract_email_column_from_table(course_html_content)
     return course_html_content, emails
 
-
 def extract_email_column_from_table(html_content):
     soup = BeautifulSoup(html_content, 'html.parser')
     table = soup.find('table', {'class': 'table table-striped fullwidth'})
     email_column_data = []
-    for row in table.find('tbody').find_all('tr'):
-        columns = row.find_all('td')
-        if len(columns) >= 5:
-            email_column_data.append(columns[4].text.strip())
+    if table:
+        tbody = table.find('tbody')
+        if tbody:
+            for row in tbody.find_all('tr'):
+                columns = row.find_all('td')
+                if len(columns) >= 5:
+                    email_column_data.append(columns[4].text.strip())
     return email_column_data
-
 
 # Root route to render index.html
 @app.get("/")
 async def index(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
-
 
 if __name__ == "__main__":
     import uvicorn
