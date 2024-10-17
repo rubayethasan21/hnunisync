@@ -11,7 +11,6 @@ from nio import (
 from aiohttp import ClientConnectionError, ClientResponseError
 
 # Matrix domain and server URL
-#matrix_domain = "localhost"  # Remote server domain
 matrix_domain = "unifyhn.de"  # Remote server domain
 homeserver = f"http://{matrix_domain}:8081"
 
@@ -41,6 +40,13 @@ async def login(username: str, password: str):
 
 # Matrix room creation function
 async def create_room(client: AsyncClient, room_name: str, room_topic: str):
+    # First, check if a room with the same name already exists
+    existing_room_id = await find_room_by_name(client, room_name)
+    if existing_room_id:
+        logging.info(f"Room '{room_name}' already exists with ID: {existing_room_id}. Returning existing room.")
+        return existing_room_id
+
+    # Proceed with room creation if it does not exist
     try:
         response = await client.room_create(
             name=room_name,
