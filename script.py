@@ -13,7 +13,7 @@ from nio import (
 # Matrix domain and server URL
 #matrix_domain = "localhost"  # Remote server domain
 matrix_domain = "unifyhn.de"  # Remote server domain
-homeserver = f"http://{matrix_domain}:8081"
+homeserver = f"https://{matrix_domain}:8081"
 
 # Matrix login function
 async def login(username: str, password: str):
