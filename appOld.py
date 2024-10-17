@@ -12,7 +12,6 @@ import re
 from typing import List
 import uuid
 import asyncio
-import logging
 
 # Import Matrix functions from script.py
 from script import (
@@ -22,13 +21,6 @@ from script import (
     logout,
     find_room_by_name,
     matrix_domain
-)
-
-# Configure logging
-logging.basicConfig(
-    filename='hnunisync.log',
-    level=logging.INFO,
-    format='%(asctime)s %(levelname)s:%(message)s'
 )
 
 app = FastAPI()
@@ -80,12 +72,11 @@ async def sync_with_matrix(matrix_login_data: MatrixLoginData):
     matrix_password = matrix_login_data.password
     courses = matrix_login_data.courses
 
-    logging.info(f"Matrix sync initiated by user: {matrix_user_id}")
+    print('matrix_user_id:', matrix_user_id)
 
     # Step 1: Login to Matrix (async function call)
     client = await login(matrix_user_id, matrix_password)
     if not client:
-        logging.error(f"Login to Matrix failed for user {matrix_user_id}")
         raise HTTPException(status_code=401, detail="Login to Matrix failed.")
 
     try:
@@ -95,17 +86,14 @@ async def sync_with_matrix(matrix_login_data: MatrixLoginData):
             room_name = course.course_name
             matrix_user_ids = convert_emails_to_matrix_user_ids(course.students, matrix_user_id)
 
-            logging.info(f"Processing course: {room_name}")
-
             # Step 2.1: Check if the room already exists (async function call)
             room_id = await find_room_by_name(client, room_name)
 
             # Step 2.2: If the room doesn't exist, create a new one (async function call)
             if not room_id:
-                logging.info(f"Room '{room_name}' does not exist. Creating a new one...")
+                print(f"Room '{room_name}' does not exist. Creating a new one...")
                 room_id = await create_room(client, room_name, f"Room for {room_name}")
                 if not room_id:
-                    logging.error(f"Failed to create room '{room_name}' for user {matrix_user_id}")
                     raise HTTPException(status_code=500, detail=f"Failed to create room {room_name}.")
 
             # Step 3: Invite users to the room (async function call)
@@ -118,17 +106,15 @@ async def sync_with_matrix(matrix_login_data: MatrixLoginData):
                     "room_id": room_id,
                     "members": added_member_list_into_matrix_rooms
                 })
-                logging.info(f"Users invited to room '{room_name}': {added_member_list_into_matrix_rooms}")
 
         # Step 4: Logout after completing the task (async function call)
         await logout(client)
 
     except Exception as e:
-        logging.exception(f"An error occurred during synchronization for user {matrix_user_id}: {e}")
+        print(f"An error occurred: {e}")
         await logout(client)
-        raise HTTPException(status_code=500, detail=f"An error occurred during synchronization: {e}")
+        raise HTTPException(status_code=500, detail=f"An error occurred during synchronization:{e}")
 
-    logging.info(f"Matrix sync completed successfully for user {matrix_user_id}")
     return {
         "status": "success",
         "message": "Rooms created and users invited successfully.",
@@ -145,7 +131,6 @@ async def ilias_login_and_get_course_member_info(login_data: LoginData):
     )
 
     session_id = str(uuid.uuid4())
-    logging.info(f"ILIAS login initiated for user: {login_data.username}")
 
     # Launch Playwright and configure it to bypass detection
     try:
@@ -180,15 +165,12 @@ async def ilias_login_and_get_course_member_info(login_data: LoginData):
                 await page.fill("input[id='otp']", login_data.loginOtp)
                 await page.click('input[id="kc-login"]')
             except PlaywrightTimeoutError:
-                logging.error(f"OTP login failed for user {login_data.username}")
                 raise HTTPException(status_code=400, detail="OTP login failed. Please check your credentials and OTP.")
 
             # Wait for redirection to the dashboard
             try:
                 await page.wait_for_url("**/ilias.php?baseClass=ilDashboardGUI&cmd=jumpToSelectedItems", timeout=60000)
-                logging.info(f"ILIAS login successful for user {login_data.username}")
             except PlaywrightTimeoutError:
-                logging.error(f"Failed to log in to ILIAS for user {login_data.username}")
                 raise HTTPException(status_code=400, detail="Failed to log in to ILIAS. Please check your credentials.")
 
             # Navigate to course list
@@ -198,7 +180,6 @@ async def ilias_login_and_get_course_member_info(login_data: LoginData):
 
             html_content = await page.content()
             courses = extract_courses(html_content)
-            logging.info(f"Extracted courses for user {login_data.username}: {[course['name'] for course in courses]}")
 
             all_email_column_data = []
             for course in courses:
@@ -208,16 +189,14 @@ async def ilias_login_and_get_course_member_info(login_data: LoginData):
                     'course_id': course['refId'],
                     'students': emails
                 })
-                logging.info(f"Extracted students for course '{course['name']}': {emails}")
 
             # Close browser sessions to free up resources
             await browser.close()
-            logging.info(f"ILIAS data extraction completed for user {login_data.username}")
 
             return JSONResponse({"status": "success", "all_email_column_data": all_email_column_data})
 
     except Exception as e:
-        logging.exception(f"An error occurred during ILIAS login for user {login_data.username}: {e}")
+        print(f"An error occurred during ILIAS login: {e}")
         raise HTTPException(status_code=500, detail="An error occurred during ILIAS login.")
 
 def extract_courses(html_content):

@@ -2,7 +2,6 @@
 
 from typing import List
 import asyncio
-import logging
 from nio import (
     AsyncClient,
     LoginResponse,
@@ -16,27 +15,20 @@ from nio import (
 matrix_domain = "unifyhn.de"  # Remote server domain
 homeserver = f"http://{matrix_domain}:8081"
 
-# Configure logging
-logging.basicConfig(
-    filename='hnunisync.log',
-    level=logging.INFO,
-    format='%(asctime)s %(levelname)s:%(message)s'
-)
-
 # Matrix login function
 async def login(username: str, password: str):
     client = AsyncClient(homeserver, username)
     try:
         response = await client.login(password)
         if isinstance(response, LoginResponse) and response.access_token:
-            logging.info(f"Logged in as {username}")
+            print(f"Logged in as {username}")
             return client
         else:
-            logging.error(f"Failed to log in as {username}: {response}")
+            print(f"Failed to log in as {username}: {response}")
             await client.close()
             return None
     except Exception as e:
-        logging.exception(f"Login error for user {username}: {e}")
+        print(f"Login error: {e}")
         await client.close()
         return None
 
@@ -49,13 +41,13 @@ async def create_room(client: AsyncClient, room_name: str, room_topic: str):
             preset=RoomPreset.private_chat
         )
         if isinstance(response, RoomCreateResponse) and response.room_id:
-            logging.info(f"Created room '{room_name}' with ID: {response.room_id}")
+            print(f"Created room '{room_name}' with ID: {response.room_id}")
             return response.room_id
         else:
-            logging.error(f"Failed to create room '{room_name}': {response}")
+            print(f"Failed to create room '{room_name}': {response}")
             return None
     except Exception as e:
-        logging.exception(f"Error creating room '{room_name}': {e}")
+        print(f"Error creating room: {e}")
         return None
 
 # Fetch the list of rooms the user has joined
@@ -63,13 +55,11 @@ async def get_joined_rooms(client: AsyncClient):
     try:
         response = await client.joined_rooms()
         if response.rooms:
-            logging.info(f"Retrieved joined rooms for user {client.user_id}")
             return response.rooms
         else:
-            logging.info(f"No joined rooms found for user {client.user_id}")
             return []
     except Exception as e:
-        logging.exception(f"Error getting joined rooms for user {client.user_id}: {e}")
+        print(f"Error getting joined rooms: {e}")
         return []
 
 # Check if a room with the desired name already exists
@@ -79,11 +69,10 @@ async def find_room_by_name(client: AsyncClient, room_name: str):
         try:
             response = await client.room_get_state_event(room_id, "m.room.name")
             if response.content.get("name") == room_name:
-                logging.info(f"Room '{room_name}' already exists with ID: {room_id}")
+                print(f"Room '{room_name}' already exists with ID: {room_id}")
                 return room_id
         except Exception as e:
-            logging.warning(f"Error checking room name '{room_name}' in room {room_id}: {e}")
-    logging.info(f"Room '{room_name}' does not exist for user {client.user_id}")
+            print(f"Error checking room name: {e}")
     return None
 
 # Invite users to room concurrently with error handling
@@ -105,11 +94,11 @@ async def invite_single_user(client, room_id, user, added_member_list_into_matri
         try:
             response = await client.room_invite(room_id, user)
             if isinstance(response, RoomInviteResponse):
-                logging.info(f"Successfully invited {user} to room {room_id}")
+                print(f"Successfully invited {user} to room {room_id}")
                 added_member_list_into_matrix_rooms.append(user)
                 success = True
             else:
-                logging.warning(f"Failed to invite {user}: {response}")
+                print(f"Failed to invite {user}: {response}")
                 retries += 1
                 await asyncio.sleep(1)
         except Exception as e:
@@ -117,26 +106,26 @@ async def invite_single_user(client, room_id, user, added_member_list_into_matri
             if "429" in error_str:
                 # Rate limit exceeded (429)
                 retry_after = 1  # Adjust based on server response
-                logging.warning(f"Rate limited when inviting {user}. Retrying after {retry_after} seconds.")
+                print(f"Rate limited when inviting {user}. Retrying after {retry_after} seconds.")
                 await asyncio.sleep(retry_after)
                 retries += 1
             elif "403" in error_str:
                 # Forbidden error (403)
-                logging.warning(f"Permission denied when inviting {user}. Skipping.")
+                print(f"Permission denied when inviting {user}. Skipping.")
                 break  # Do not retry on permission errors
             else:
-                logging.exception(f"Error inviting {user}: {e}")
+                print(f"Error inviting {user}: {e}")
                 retries += 1
                 await asyncio.sleep(1)
     if not success and retries >= max_retries:
-        logging.error(f"Failed to invite {user} after {max_retries} attempts.")
+        print(f"Failed to invite {user} after {max_retries} attempts.")
 
 # Matrix logout function
 async def logout(client: AsyncClient):
     try:
         await client.logout()
         await client.close()
-        logging.info(f"Logout successful for user {client.user_id}")
+        print("Logout successful!")
     except Exception as e:
-        logging.exception(f"Error logging out user {client.user_id}: {e}")
+        print(f"Error logging out: {e}")
         await client.close()
