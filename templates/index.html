@@ -255,7 +255,7 @@
                 const matrixLoginData = {
                     userId: $('#matrix-user-id').val(),
                     password: $('#matrix-password').val(),
-                    courses: courseUserListToSync // Pass the course data from previous steps
+                    courses: courseUserListToSync
                 };
 
                 showLoading($matrixLoginBtn);
@@ -266,6 +266,7 @@
                     type: 'POST',
                     data: JSON.stringify(matrixLoginData),
                     contentType: 'application/json',
+                    timeout: 600000, // Set timeout to 10 minutes (600,000 milliseconds)
                     success: function (data) {
                         console.log(data);
                         if (data.status === 'success') {
@@ -289,6 +290,7 @@
                     }
                 });
             }
+
 
             /**
              * Renders the list of users and courses.

@@ -113,7 +113,7 @@ async def sync_with_matrix(matrix_login_data: MatrixLoginData):
     except Exception as e:
         print(f"An error occurred: {e}")
         await logout(client)
-        raise HTTPException(status_code=500, detail="An error occurred during synchronization.")
+        raise HTTPException(status_code=500, detail=f"An error occurred during synchronization:{e}")
 
     return {
         "status": "success",
