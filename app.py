@@ -100,7 +100,7 @@ async def sync_with_matrix(matrix_login_data: MatrixLoginData):
 
             matrix_user_ids = matrix_user_ids + matrix_demo_user_ids
 
-            logging.info(f"Mattrix User ids are listed: {matrix_user_ids}")
+            logging.info(f"Matrix User ids are listed: {matrix_user_ids}")
 
             logging.info(f"Processing course: {room_name}")
 
