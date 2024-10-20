@@ -46,7 +46,22 @@ app.add_middleware(
 templates = Jinja2Templates(directory="templates")
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
-demo_students_emails = [f"demo.user{i}@hs-heilbronn.de" for i in range(1, 12)]
+
+demo_students_emails = [
+        "john.doe@hs-heilbronn.de",
+        "jane.doe@hs-heilbronn.de",
+        "richard.roe@hs-heilbronn.de",
+        "jane.roe@hs-heilbronn.de",
+        "john.smith@hs-heilbronn.de",
+        "mary.major@hs-heilbronn.de",
+        "alan.smithee@hs-heilbronn.de",
+        "joe.bloggs@hs-heilbronn.de",
+        "jack.jones@hs-heilbronn.de",
+        "john.public@hs-heilbronn.de",
+        "jane.public@hs-heilbronn.de"
+    ]
+
+#demo_students_emails = [f"demo.user{i}@hs-heilbronn.de" for i in range(1, 12)]
 
 # Define Pydantic models to handle incoming JSON data
 class LoginData(BaseModel):
