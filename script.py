@@ -51,8 +51,7 @@ async def create_room(client: AsyncClient, room_name: str, room_topic: str):
         response = await client.room_create(
             name=room_name,
             topic=room_topic,
-            preset=RoomPreset.private_chat,
-            power_level_content_override={"users_default": 50}  # Optional power level adjustment
+            preset=RoomPreset.private_chat
         )
         if isinstance(response, RoomCreateResponse) and response.room_id:
             room_id = response.room_id
