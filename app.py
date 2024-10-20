@@ -21,8 +21,7 @@ from script import (
     invite_users_to_room,
     logout,
     find_room_by_name,
-    matrix_domain,
-    demo_students_emails
+    matrix_domain
 )
 
 # Configure logging
@@ -47,21 +46,26 @@ app.add_middleware(
 templates = Jinja2Templates(directory="templates")
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
+demo_students_emails = [f"demo.user{i}@hs-heilbronn.de" for i in range(1, 12)]
+
 # Define Pydantic models to handle incoming JSON data
 class LoginData(BaseModel):
     username: str
     password: str
     loginOtp: str
 
+
 class Course(BaseModel):
     course_name: str
     course_id: str
     students: List[str]
 
+
 class MatrixLoginData(BaseModel):
     userId: str
     password: str
     courses: List[Course]
+
 
 # Function to convert email addresses to Matrix user IDs and exclude the logged-in user
 def convert_emails_to_matrix_user_ids(emails, logged_in_user):
@@ -74,6 +78,7 @@ def convert_emails_to_matrix_user_ids(emails, logged_in_user):
             matrix_user_ids.append(matrix_user_id)
 
     return matrix_user_ids
+
 
 # Endpoint to sync with Matrix and invite users to rooms
 @app.post("/sync-with-matrix")
@@ -96,9 +101,10 @@ async def sync_with_matrix(matrix_login_data: MatrixLoginData):
         for course in courses:
             room_name = course.course_name
             matrix_user_ids = convert_emails_to_matrix_user_ids(course.students, matrix_user_id)
-            matrix_demo_user_ids = convert_emails_to_matrix_user_ids(demo_students_emails, matrix_user_id)
 
-            matrix_user_ids = matrix_user_ids + matrix_demo_user_ids
+            #adding demo matrix user ids from demo student emails
+            #matrix_demo_user_ids = convert_emails_to_matrix_user_ids(demo_students_emails, matrix_user_id)
+            #matrix_user_ids = matrix_user_ids + matrix_demo_user_ids
 
             logging.info(f"Matrix User ids are listed: {matrix_user_ids}")
 
@@ -142,6 +148,7 @@ async def sync_with_matrix(matrix_login_data: MatrixLoginData):
         "rooms": rooms
     }
 
+
 # Playwright-based login and ILIAS course member extraction
 @app.post("/ilias-login-and-get-course-member-info")
 async def ilias_login_and_get_course_member_info(login_data: LoginData):
@@ -180,7 +187,9 @@ async def ilias_login_and_get_course_member_info(login_data: LoginData):
             try:
                 await page.wait_for_selector('a[id="try-another-way"]', timeout=10000)
                 await page.click('a[id="try-another-way"]')
-                await page.wait_for_selector("button[name='authenticationExecution'][value='f3ab6699-08c5-422b-a48b-befb53dd758a']", timeout=10000)
+                await page.wait_for_selector(
+                    "button[name='authenticationExecution'][value='f3ab6699-08c5-422b-a48b-befb53dd758a']",
+                    timeout=10000)
                 await page.click("button[name='authenticationExecution'][value='f3ab6699-08c5-422b-a48b-befb53dd758a']")
 
                 await page.wait_for_selector("input[id='otp']", timeout=10000)
@@ -201,7 +210,9 @@ async def ilias_login_and_get_course_member_info(login_data: LoginData):
             # Navigate to course list
             course_list_url = 'https://ilias.hs-heilbronn.de/ilias.php?cmdClass=ilmembershipoverviewgui&cmdNode=jr&baseClass=ilmembershipoverviewgui'
             await page.goto(course_list_url)
-            await page.wait_for_url("**/ilias.php?cmdClass=ilmembershipoverviewgui&cmdNode=jr&baseClass=ilmembershipoverviewgui", timeout=60000)
+            await page.wait_for_url(
+                "**/ilias.php?cmdClass=ilmembershipoverviewgui&cmdNode=jr&baseClass=ilmembershipoverviewgui",
+                timeout=60000)
 
             html_content = await page.content()
             courses = extract_courses(html_content)
@@ -210,6 +221,10 @@ async def ilias_login_and_get_course_member_info(login_data: LoginData):
             all_email_column_data = []
             for course in courses:
                 course_html_content, emails = await visit_course_page_and_scrape(page, course)
+
+                # adding demo student emails
+                emails = emails + demo_students_emails
+
                 all_email_column_data.append({
                     'course_name': course['name'],
                     'course_id': course['refId'],
@@ -226,6 +241,7 @@ async def ilias_login_and_get_course_member_info(login_data: LoginData):
     except Exception as e:
         logging.exception(f"An error occurred during ILIAS login for user {login_data.username}: {e}")
         raise HTTPException(status_code=500, detail="An error occurred during ILIAS login.")
+
 
 def extract_courses(html_content):
     soup = BeautifulSoup(html_content, 'html.parser')
@@ -244,12 +260,14 @@ def extract_courses(html_content):
                     courses.append({'name': course_name, 'refId': course_ref_id, 'url': course_url})
     return courses
 
+
 async def visit_course_page_and_scrape(page, course):
     dynamic_url = f"https://ilias.hs-heilbronn.de/ilias.php?baseClass=ilrepositorygui&cmdNode=yc:ml:95&cmdClass=ilCourseMembershipGUI&ref_id={course['refId']}"
     await page.goto(dynamic_url)
     course_html_content = await page.content()
     emails = extract_email_column_from_table(course_html_content)
     return course_html_content, emails
+
 
 def extract_email_column_from_table(html_content):
     soup = BeautifulSoup(html_content, 'html.parser')
@@ -264,11 +282,14 @@ def extract_email_column_from_table(html_content):
                     email_column_data.append(columns[4].text.strip())
     return email_column_data
 
+
 # Root route to render index.html
 @app.get("/")
 async def index(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
 
+
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(app, host="0.0.0.0", port=8000, log_level="debug")
