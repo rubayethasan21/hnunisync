@@ -10,6 +10,21 @@ from nio import (
 )
 from aiohttp import ClientConnectionError, ClientResponseError
 
+
+demo_students_emails = [
+        "john.doe@demo.de",
+        "jane.doe@demo.de",
+        "richard.roe@demo.de",
+        "jane.roe@demo.de",
+        "john.smith@demo.de",
+        "mary.major@demo.de",
+        "alan.smithee@demo.de",
+        "joe.bloggs@demo.de",
+        "jack.jones@demo.de",
+        "john.public@demo.de",
+        "jane.public@demo.de"
+    ]
+
 # Matrix domain and server URL
 matrix_domain = "unifyhn.de"  # Remote server domain
 homeserver = f"http://{matrix_domain}:8081"

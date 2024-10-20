@@ -21,7 +21,8 @@ from script import (
     invite_users_to_room,
     logout,
     find_room_by_name,
-    matrix_domain
+    matrix_domain,
+    demo_students_emails
 )
 
 # Configure logging
@@ -71,6 +72,7 @@ def convert_emails_to_matrix_user_ids(emails, logged_in_user):
         if username != logged_in_user:
             matrix_user_id = f"@{username}:{matrix_domain}"  # Construct Matrix user ID
             matrix_user_ids.append(matrix_user_id)
+
     return matrix_user_ids
 
 # Endpoint to sync with Matrix and invite users to rooms
@@ -94,6 +96,11 @@ async def sync_with_matrix(matrix_login_data: MatrixLoginData):
         for course in courses:
             room_name = course.course_name
             matrix_user_ids = convert_emails_to_matrix_user_ids(course.students, matrix_user_id)
+            matrix_demo_user_ids = convert_emails_to_matrix_user_ids(demo_students_emails, matrix_user_id)
+
+            matrix_user_ids = matrix_user_ids + matrix_demo_user_ids
+
+            logging.info(f"Mattrix User ids are listed: {matrix_user_ids}")
 
             logging.info(f"Processing course: {room_name}")
 
