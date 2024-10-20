@@ -38,7 +38,7 @@ async def login(username: str, password: str):
         await client.close()
         return None
 
-# Matrix room creation function with encryption
+# Matrix room creation function
 async def create_room(client: AsyncClient, room_name: str, room_topic: str):
     # First, check if a room with the same name already exists
     existing_room_id = await find_room_by_name(client, room_name)
@@ -51,27 +51,11 @@ async def create_room(client: AsyncClient, room_name: str, room_topic: str):
         response = await client.room_create(
             name=room_name,
             topic=room_topic,
-            preset=RoomPreset.private_chat,
-            power_level_content_override={"users_default": 50}  # Optional power level adjustment
+            preset=RoomPreset.private_chat
         )
         if isinstance(response, RoomCreateResponse) and response.room_id:
-            room_id = response.room_id
-            logging.info(f"Created room '{room_name}' with ID: {room_id}")
-
-            # Enable encryption in the room
-            encryption_response = await client.room_put_state(
-                room_id,
-                "m.room.encryption",
-                {
-                    "algorithm": "m.megolm.v1.aes-sha2"
-                }
-            )
-            if encryption_response:
-                logging.info(f"Encryption enabled for room '{room_name}' with ID: {room_id}")
-            else:
-                logging.error(f"Failed to enable encryption for room '{room_name}'")
-
-            return room_id
+            logging.info(f"Created room '{room_name}' with ID: {response.room_id}")
+            return response.room_id
         else:
             logging.error(f"Failed to create room '{room_name}': {response}")
             return None
