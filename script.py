@@ -11,8 +11,8 @@ from nio import (
 from aiohttp import ClientConnectionError, ClientResponseError
 
 # Matrix domain and server URL
-matrix_domain = "localhost"  # Remote server domain
-# matrix_domain = "unifyhn.de"  # Remote server domain
+#matrix_domain = "localhost"  # Remote server domain
+matrix_domain = "unifyhn.de"  # Remote server domain
 homeserver = f"http://{matrix_domain}:8081"
 
 # Configure logging
