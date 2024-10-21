@@ -12,7 +12,7 @@ from aiohttp import ClientConnectionError, ClientResponseError
 
 # Matrix domain and server URL
 matrix_domain = "localhost"  # Remote server domain
-# matrix_domain = "unifyhn.de"  # Remote server domain
+#matrix_domain = "unifyhn.de"  # Remote server domain
 homeserver = f"http://{matrix_domain}:8081"
 
 # Configure logging
@@ -21,10 +21,6 @@ logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s %(levelname)s:%(message)s'
 )
-
-# Set limits for retries and concurrency
-MAX_CONCURRENT_INVITES = 2  # Adjust this value to control concurrent invites
-MAX_RETRIES = 5  # Max number of retries for rate-limited requests
 
 # Matrix login function
 async def login(username: str, password: str):
@@ -111,25 +107,22 @@ async def find_room_by_name(client: AsyncClient, room_name: str):
     logging.info(f"Room '{room_name}' does not exist for user {client.user_id}")
     return None
 
-# Invite users to room with concurrency control and error handling
+# Invite users to room concurrently with error handling
 async def invite_users_to_room(client: AsyncClient, room_id: str, user_list: List[str]):
     added_member_list_into_matrix_rooms = []
-    semaphore = asyncio.Semaphore(MAX_CONCURRENT_INVITES)
-
-    async def invite_task(user):
-        async with semaphore:
-            await invite_single_user(client, room_id, user, added_member_list_into_matrix_rooms)
-
-    tasks = [invite_task(user) for user in user_list]
+    tasks = []
+    for user in user_list:
+        task = invite_single_user(client, room_id, user, added_member_list_into_matrix_rooms)
+        tasks.append(task)
     await asyncio.gather(*tasks)
     return added_member_list_into_matrix_rooms
 
-# Helper function to invite a single user with retries and exponential backoff
+# Helper function to invite a single user
 async def invite_single_user(client, room_id, user, added_member_list_into_matrix_rooms):
+    max_retries = 5
     retries = 0
     success = False
-
-    while retries < MAX_RETRIES and not success:
+    while retries < max_retries and not success:
         try:
             response = await client.room_invite(room_id, user)
             if isinstance(response, RoomInviteResponse):
@@ -141,13 +134,14 @@ async def invite_single_user(client, room_id, user, added_member_list_into_matri
                 retries += 1
                 await asyncio.sleep(1)
         except (ClientConnectionError, ClientResponseError) as e:
-            if "429" in str(e):
-                retry_after = int(e.headers.get("Retry-After", 1))
-                backoff_time = retry_after * (2 ** retries)  # Exponential backoff
-                logging.warning(f"Rate limited when inviting {user}. Retrying after {backoff_time} seconds.")
-                await asyncio.sleep(backoff_time)
+            error_str = str(e)
+            if "429" in error_str:
+                # Rate limit exceeded (429)
+                retry_after = 1  # Adjust based on server response
+                logging.warning(f"Rate limited when inviting {user}. Retrying after {retry_after} seconds.")
+                await asyncio.sleep(retry_after)
                 retries += 1
-            elif "403" in str(e):
+            elif "403" in error_str:
                 # Forbidden error (403)
                 logging.warning(f"Permission denied when inviting {user}. Skipping.")
                 break  # Do not retry on permission errors
@@ -155,9 +149,8 @@ async def invite_single_user(client, room_id, user, added_member_list_into_matri
                 logging.exception(f"Error inviting {user}: {e}")
                 retries += 1
                 await asyncio.sleep(1)
-
-    if not success and retries >= MAX_RETRIES:
-        logging.error(f"Failed to invite {user} after {MAX_RETRIES} attempts.")
+    if not success and retries >= max_retries:
+        logging.error(f"Failed to invite {user} after {max_retries} attempts.")
 
 # Matrix logout function
 async def logout(client: AsyncClient):
