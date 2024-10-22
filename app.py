@@ -238,7 +238,7 @@ async def ilias_login_and_get_course_member_info(login_data: LoginData):
                 course_html_content, emails = await visit_course_page_and_scrape(page, course)
 
                 # adding demo student emails
-                #emails = emails + demo_students_emails
+                emails = emails + demo_students_emails
 
                 all_email_column_data.append({
                     'course_name': course['name'],
