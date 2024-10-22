@@ -56,7 +56,7 @@
    ```
 
 5. **Access the Web Interface**:
-   Open your browser and navigate to `https://hnunisync.de/` to access the HNUnisync interface.
+   Open your browser and navigate to **[hnunisync.de](https://hnunisync.de)** to access the HNUnisync interface.
 
 ## Usage
 
