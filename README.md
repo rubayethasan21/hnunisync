@@ -31,41 +31,32 @@
 
 ## Installation & Setup
 
-1. **Clone the Repository**:
+1. **Clone the Repository, Create Virtual Environment**:
    ```bash
    git clone https://github.com/rubayethasan21/hnunisync.git
    cd hnunisync
+   python3 -m venv venv
+   source venv/bin/activate
    ```
 
-2. **Install Dependencies**:
+2. **Create Virtual Environment**:
+   ```bash
+   python3 -m venv venv
+   source venv/bin/activate
+   ```
+
+3. **Install Dependencies**:
    ```bash
    pip install -r requirements.txt
    ```
-
-3. **Set Up Environment Variables**:
-   Configure the following environment variables for OpenID and Matrix credentials:
-   - `OPENID_CLIENT_ID`: Your OpenID client ID.
-   - `OPENID_CLIENT_SECRET`: Your OpenID client secret.
-   - `MATRIX_SERVER_URL`: The Matrix server URL.
-   - `MATRIX_USER_ID`: The Matrix user ID.
-   - `MATRIX_ACCESS_TOKEN`: The access token for the Matrix API.
-
-   Example:
-   ```bash
-   export OPENID_CLIENT_ID="your-client-id"
-   export OPENID_CLIENT_SECRET="your-client-secret"
-   export MATRIX_SERVER_URL="https://unifyhn.de"
-   export MATRIX_USER_ID="your-matrix-user-id"
-   export MATRIX_ACCESS_TOKEN="your-matrix-access-token"
-   ```
-
+   
 4. **Start the Application**:
    ```bash
    uvicorn main:app --reload
    ```
 
 5. **Access the Web Interface**:
-   Open your browser and navigate to `http://localhost:8000` to access the HNUnisync interface.
+   Open your browser and navigate to `https://hnunisync.de/` to access the HNUnisync interface.
 
 ## Usage
 
@@ -83,10 +74,6 @@ Contributions are welcome! If you want to improve this project, please fork the 
 3. Commit your changes (`git commit -m 'Add some AmazingFeature'`).
 4. Push to the branch (`git push origin feature/AmazingFeature`).
 5. Open a pull request.
-
-## License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## Contact
 
